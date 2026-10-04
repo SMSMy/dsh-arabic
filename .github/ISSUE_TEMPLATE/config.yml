@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Translation glossary & rules
+    url: https://github.com/SMSMy/dsh-arabic/blob/main/CONTRIBUTING.md
+    about: How strings are identified, and the terminology every translation must follow.
+  - name: How the bidi layer works
+    url: https://github.com/SMSMy/dsh-arabic#how-it-works
+    about: Why direction is derived per paragraph instead of flipping the whole shell.

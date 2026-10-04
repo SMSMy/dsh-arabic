@@ -1,0 +1,36 @@
+---
+name: Bug report
+about: The RTL layer, the language pack, or the settings row misbehaves
+title: '[bug] '
+labels: bug
+---
+
+**What happens?**
+
+
+**What did you expect?**
+
+
+**Steps to reproduce**
+1.
+2.
+3.
+
+**Area**
+- [ ] Bidi/RTL rendering (text order or alignment)
+- [ ] The language pack (Arabic wording)
+- [ ] The settings row / toggle
+- [ ] Installation or startup
+- [ ] Something else
+
+**Environment**
+- DSH version (`dsh --version` or the About page):
+- `dsh-arabic` version:
+- Interface language (Settings → General → Language):
+- RTL toggle (Settings → General → Right-to-left text direction): on / off
+- A string that stays LTR when it should not, or vice versa (paste it here):
+
+**Console output (if any)**
+<!-- The browser console and the app logs both help. -->
+```
+```

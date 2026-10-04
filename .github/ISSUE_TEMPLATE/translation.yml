@@ -1,0 +1,37 @@
+---
+name: Translation correction
+about: A word, phrase or RTL behaviour is wrong for Arabic
+title: '[translation] '
+labels: translation
+---
+
+<!--
+Thanks for improving the Arabic pack. The fastest fix is a one-line change:
+every string is identified by `<namespace>#<key>`, and you can see it in the
+running UI by searching the key text in data/en-catalog.json.
+-->
+
+**Where does it appear?**
+<!-- e.g. Settings → Plugins, the Jobs panel, a tool card -->
+
+**Current Arabic text**
+
+
+**Expected Arabic text**
+
+
+**English source (if you know it)**
+`namespace#key` or the English wording:
+
+**Which kind of problem is it?**
+- [ ] Wrong or awkward wording
+- [ ] Not matching the project glossary (الجلسة، مساحة العمل، وكيل، بلاقن، أداة، مزوّد)
+- [ ] Placeholder or number rendered incorrectly
+- [ ] Mixed Arabic/English text is ordered or aligned wrongly (bidi)
+- [ ] Text is still English (untranslated key)
+
+**Environment**
+- DSH version:
+- Plugin version (`dsh-arabic`):
+- Interface language:
+- Screenshot (optional but very helpful):
