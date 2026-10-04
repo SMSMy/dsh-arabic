@@ -24,26 +24,56 @@ as *one* word rather than three:
 | `Hello كيف حالك` | RTL | still Arabic words — `dir="auto"` would get this **wrong** |
 | `Error: فشل الاتصال بالخادم` | RTL | the sentence is Arabic, the prefix is not |
 | `npm install ثم أعد التشغيل` | RTL | 3 Arabic words vs 2 Latin ones |
-| `@deepseek-ai/dsh مهم جداً` | RTL | one identifier = one word |
+| `شغّل npx @deepseek-ai/dsh web` | RTL | the code token binds `npx … web` into **one** unit, so 1 Arabic vs 1 Latin |
+| `راجع commit a4c1025b قبل النشر` | RTL | a bare sha does not vote |
+| `نسبة النجاح 15/15` | RTL | a ratio is neutral |
+| `افتح src/index.ts ثم عدّل الدالة` | RTL | a path does not vote |
+| `@deepseek-ai/dsh مهم جدًا` | RTL | a leading identifier is one unit |
 | `Hello نص` | RTL | a tie resolves to RTL |
 | `The build failed while parsing سلام in the file` | untouched | English prose quoting a word stays LTR |
 | `pre`, `code`, inline code | LTR always | code is never judged and never mirrored |
 | composer, search boxes | follows typing | RTL while Arabic dominates, otherwise native `auto` |
 
-The browser's own first-strong rule (`dir="auto"`, `unicode-bidi: plaintext`) is
-only right when the *first* strong character happens to match the language of the
-sentence — which in a developer tool is the exception, not the rule. It is still
-used for the value of a composer, where it matches what the user is typing.
+The three rules behind the table:
+
+1. **Code-like tokens do not vote** — URLs, paths, `@scope/name`, shas, `15/15`,
+   dotted file names. One URL or sha can otherwise outweigh a whole Arabic
+   sentence, and a code token also **binds the Latin words around it** into one
+   technical unit.
+2. **Words vote, not letters** — an Arabic word against a Latin word, because
+   Latin technical terms are longer in characters but fewer in words. A tie goes
+   to Arabic; a block with no Arabic word is released.
+3. **Hysteresis while streaming** — a block that is already RTL stays RTL until
+   the text is clearly Latin (twice as many Latin words), so a growing answer
+   cannot flicker between directions.
 
 If a block's direction is set by the app or by you (`dir="ltr"` in the markup),
 this layer never touches it: that is the escape hatch for any block the estimator
 gets wrong.
 
-> The word-dominance approach and the "one identifier is one word" rule follow the
-> community consensus pioneered by
-> [haythamat/dsh-client-ui-rtl](https://github.com/haythamat/dsh-client-ui-rtl);
-> this implementation is independent, adds the composer/toggle layer, and is
-> covered by its own tests.
+### Known limits (asserted by the tests, not hidden)
+
+- **Bare Latin words still vote.** `شغّل git status` stays LTR: two ordinary
+  Latin words outweigh one Arabic word and there is no technical separator to
+  glue them. Treating every Latin run as one unit was tried and rejected — it
+  flips English paragraphs that quote a single Arabic word.
+- **The sidebar terminal is not shaped.** DSH's terminal is xterm.js, which does
+  not join Arabic letters (`ا ل ع ر ب ي ة`). That is an upstream limitation; this
+  plugin documents it instead of pretending otherwise.
+- **Plural forms.** DSH's locale dictionaries are flat strings, so an Arabic
+  sentence that counts things cannot pick the right form for 1, 2, 3–10, 11+.
+  Where it matters, the copy is phrased to be number-agnostic.
+- **Chrome stays LTR.** Menus and the sidebar follow the shell's direction, not
+  the selected language: flipping them by injection breaks a layout authored with
+  physical CSS. See [docs/roadmap.md](docs/roadmap.md) for the upstream-first plan.
+
+> The word-dominance approach, the "one identifier is one word" rule and the
+> idea of stripping code-like tokens before counting follow the community
+> consensus pioneered by
+> [haythamat/dsh-client-ui-rtl](https://github.com/haythamat/dsh-client-ui-rtl)
+> and [kfirsch/dsh-hebrew-rtl](https://github.com/kfirsch/dsh-hebrew-rtl)
+> (both MIT); this implementation is independent, adds the composer/toggle layer
+> and the hysteresis, and is covered by its own tests.
 
 ![Before and after: first-strong versus script dominance](https://raw.githubusercontent.com/SMSMy/dsh-arabic/main/docs/direction.png)
 
@@ -125,11 +155,17 @@ a future slot change can never take the language pack down with it.
 | `lib/client.js` | generated browser half: the Arabic language pack |
 | `locales/ar.json` | the translated dictionaries |
 | `data/en-catalog.json` | official English key set extracted from the DSH sources |
+| `data/en-catalog.meta.json` | the upstream ref/commit that key set was measured against |
+| `data/glossary.yml` | machine-readable terminology (term, ar, avoid, do-not-translate) |
 | `data/overrides.json` | pinned wording where parallel batches disagreed |
+| `data/term-map.json` | term normalization applied to every value in the pipeline |
 | `scripts/extract-catalog.mjs` | regenerates `data/en-catalog.json` from the official upstream sources (`npm run extract`) |
+| `scripts/status.mjs` | coverage against the recorded upstream revision (`npm run status`) |
 | `scripts/build-client.mjs` | validates the pack and regenerates `lib/client.js` (`--check` for CI) |
 | `scripts/assemble-translations.mjs` | merges translation batches into `locales/ar.json` |
 | `scripts/lint-consistency.mjs` | reports the same English string translated two ways |
+| `tests/golden-direction.mjs` | 25 golden strings with the direction each must get |
+| `docs/roadmap.md` | the three layers, the upstream asks, and the deliberate non-goals |
 | `CONTRIBUTING.md` | how to add or fix a translation, and the checks CI runs |
 | `tests/verify-rtl.mjs` | 12 behavioural checks of the bidi layer on a DOM shim |
 | `tests/verify-locales.mjs` | catalog integrity, artifact contract and registration checks |
@@ -137,24 +173,27 @@ a future slot change can never take the language pack down with it.
 ## Development
 
 ```bash
-npm test                     # both suites
+npm test                     # direction (34) + locale (28) + golden matrix (25)
+npm run check                # completeness + consistency lint + golden matrix
 npm run build                # regenerate lib/client.js
-node scripts/build-client.mjs --check    # fail if the pack is incomplete
-node scripts/lint-consistency.mjs --strict
+npm run status               # coverage against the recorded upstream revision
 ```
 
 ### Keeping up with upstream
 
-The key set is extracted, not hand-maintained:
+A weekly workflow ([`.github/workflows/upstream-sync.yml`](.github/workflows/upstream-sync.yml))
+re-extracts the official key set and opens a pull request containing only the new
+keys, so drift arrives as a reviewable diff instead of a surprise:
 
 ```bash
 GITHUB_TOKEN=$(gh auth token) npm run extract   # refresh data/en-catalog.json
 node scripts/build-client.mjs --check           # list every untranslated key
+npm run status                                  # coverage + upstream revision
 ```
 
-The diff of `data/en-catalog.json` is exactly the new translation worklist, and
-keys that are still missing fall back to English at runtime — so a partial
-update never breaks the interface. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Keys that are still missing fall back to English at runtime, so a partial update
+never breaks the interface. See [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[roadmap](docs/roadmap.md).
 
 ## Compatibility
 

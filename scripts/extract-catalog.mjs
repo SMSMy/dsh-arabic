@@ -76,7 +76,8 @@ mkdirSync(CACHE, { recursive: true })
 console.log(`1/5  listing ${OWNER}/${REPO}@${REF}`)
 const tree = await api(`/repos/${OWNER}/${REPO}/git/trees/${REF}?recursive=1`)
 const paths = tree.tree.filter((entry) => entry.type === 'blob').map((entry) => entry.path)
-console.log(`     ${paths.length} paths`)
+const head = await api(`/repos/${OWNER}/${REPO}/commits/${REF}`)
+console.log(`     ${paths.length} paths at ${String(head.sha).slice(0, 12)}`)
 
 const isDictionary = (path) =>
   path.startsWith('packages/') &&
@@ -222,6 +223,15 @@ for (const ns of Object.keys(catalog).sort()) {
 writeFileSync(join(ROOT, 'data', 'en-catalog.json'), JSON.stringify(sorted, null, 2) + '\n')
 
 const totalKeys = Object.values(sorted).reduce((n, dict) => n + Object.keys(dict).length, 0)
-console.log(`\nnamespaces ${Object.keys(sorted).length} · keys ${totalKeys}`)
+// The revision this key set was measured against, so "stale" has a precise
+// meaning for scripts/status.mjs and the weekly sync workflow.
+writeFileSync(join(ROOT, 'data', 'en-catalog.meta.json'), JSON.stringify({
+  ref: REF,
+  commit: head.sha,
+  extractedAt: new Date().toISOString(),
+  namespaces: Object.keys(sorted).length,
+  keys: totalKeys
+}, null, 2) + '\n')
+console.log(`\nnamespaces ${Object.keys(sorted).length} · keys ${totalKeys} · upstream ${String(head.sha).slice(0, 12)}`)
 console.log(`${unresolved} register call(s) unresolved · ${used.size}/${parsed.length} dictionaries used`)
 console.log('wrote data/en-catalog.json — the diff against the previous revision is the new translation worklist')

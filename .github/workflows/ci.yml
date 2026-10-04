@@ -34,3 +34,9 @@ jobs:
 
       - name: Bidi/RTL behaviour tests
         run: node tests/verify-rtl.mjs
+
+      - name: Golden direction matrix
+        run: node tests/golden-direction.mjs
+
+      - name: Coverage against the recorded upstream revision
+        run: node scripts/status.mjs

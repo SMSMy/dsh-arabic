@@ -1,0 +1,69 @@
+name: Upstream sync
+
+# DSH ships weekly. A language pack that is not re-measured against upstream
+# quietly becomes "Arabic with English pockets", which is how most community
+# packs die. This job runs the extractor on a schedule and opens a pull request
+# containing only the new keys, so the drift is a reviewable diff instead of a
+# surprise.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays, 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Re-extract the official key set
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run extract
+
+      - name: Coverage against the new revision
+        run: node scripts/status.mjs || true
+
+      - name: Open a pull request when upstream added or changed keys
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- data/en-catalog.json; then
+            echo "upstream key set unchanged" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="upstream-sync/$(date -u +%Y%m%d)"
+          git checkout -b "$branch"
+          git add data/
+          git commit -m "chore(upstream): refresh the English key set"
+          git push origin "$branch"
+          node scripts/status.mjs > status.txt || true
+          {
+            echo "The official sources changed since the last extraction."
+            echo
+            echo "New keys are untranslated for now - they fall back to English at runtime,"
+            echo "so this diff is safe to merge and then translate at leisure:"
+            echo
+            echo '```'
+            cat status.txt
+            echo '```'
+          } > pr-body.md
+          gh pr create \
+            --title "chore(upstream): refresh the English key set" \
+            --body-file pr-body.md \
+            --base main \
+            --head "$branch"

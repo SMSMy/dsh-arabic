@@ -24,9 +24,13 @@ const STYLE_MARK = 'dsh-arabic'
 const INSTALL_FLAG = '__dshArabicInstalled'
 
 const CSS = `
-/* dsh-arabic — direction is decided per block by script dominance, not by the
-   first strong character. The marker attribute means "we set the direction". */
+/* dsh-arabic — direction is decided per block by prose dominance, not by the
+   first strong character. The marker attribute means "we set the direction";
+   direction and unicode-bidi are declared here as well as written as the dir
+   attribute, so the intent is readable in the stylesheet too. */
 [data-dsh-arabic-bidi="1"] {
+  direction: rtl;
+  unicode-bidi: isolate;
   text-align: start;
 }
 
@@ -108,35 +112,93 @@ function dshArabicClient() {
     }
 
     /**
-     * Estimate a block's direction by script dominance.
+     * Code-like tokens are replaced before counting, because one URL, path or
+     * commit sha can outweigh a whole Arabic sentence: a 40-char sha alone is
+     * forty Latin letters. They are replaced by a glue character rather than
+     * deleted, so the Latin words around them merge into one technical unit —
+     * `npx @deepseek-ai/dsh web` becomes a single Latin word instead of three,
+     * which is what lets an Arabic instruction containing a command still read
+     * as Arabic.
      *
-     * - Unit: one whitespace-delimited token, so identifiers, paths and package
-     *   names count once.
-     * - Classification: a token holding any RTL character is an RTL word;
-     *   otherwise a token holding any Latin letter is an LTR word. Mixed tokens
-     *   resolve to RTL, because RTL prose embeds Latin terms far more often than
-     *   the reverse.
-     * - Neutral: tokens with no strong letters (numbers, punctuation) count as
-     *   neither.
-     * - Tie resolves to RTL; a block with no RTL word at all is left untouched,
-     *   so English content is never flipped.
-     *
-     * This is why the first strong character is the wrong rule here: in
-     * `npm install ثم أعد التشغيل` and `Error: فشل الاتصال` the line starts
-     * Latin, but the sentence is Arabic and must be read as Arabic.
+     * Order matters: URL first, then any token carrying a technical separator
+     * — which is what catches `@deepseek-ai/dsh`, a package scope that does not
+     * start with a letter and would otherwise slip past a leading-letter rule —
+     * then a bare hex run (a sha without separators), then a ratio, then a
+     * dotted identifier. An ordinary Latin word standing alone is deliberately
+     * NOT matched.
      */
-    function isRtlDominant(text) {
-      if (!text) return false
-      var tokens = text.split(SEPARATOR)
-      var rtl = 0
-      var ltr = 0
+    var CODEISH = /https?:\/\/\S+|\S*[._/:+@#]\S*|\b[0-9a-f]{6,}\b|\b\d+\/\d+\b|\b[\w-]+\.[\w-]{2,}\b/g
+
+    /** True when one whitespace token looks like code, a path, a URL or a sha. */
+    function isCodeish(token) {
+      CODEISH.lastIndex = 0
+      return CODEISH.test(token)
+    }
+
+    /**
+     * Weigh a block's prose: code-like tokens do not vote, words do.
+     *
+     * - Unit: one whitespace-delimited token.
+     * - A token holding any RTL character is an Arabic word; otherwise a token
+     *   holding a Latin letter is a Latin word; a token with neither (numbers,
+     *   punctuation) counts as neither.
+     * - A code-like token votes for nothing, and it makes the Latin word that
+     *   follows it part of the same technical unit, so `npx @deepseek-ai/dsh web`
+     *   is one unit instead of three. The flag is set by the code token alone:
+     *   two ordinary Latin words side by side still count twice, or an English
+     *   paragraph quoting an Arabic word would tie and flip.
+     *
+     * @param text - Text to weigh.
+     * @returns the count of Arabic and Latin prose words.
+     */
+    function weigh(text) {
+      var out = { rtl: 0, ltr: 0 }
+      if (!text) return out
+      var tokens = String(text).split(SEPARATOR)
+      var glued = false
       for (var i = 0; i < tokens.length; i++) {
         var token = tokens[i]
         if (!token) continue
-        if (RTL_CHAR.test(token)) rtl++
-        else if (LATIN_CHAR.test(token)) ltr++
+        if (RTL_CHAR.test(token)) {
+          out.rtl++
+          glued = false
+          continue
+        }
+        if (isCodeish(token)) {
+          glued = true
+          continue
+        }
+        if (LATIN_CHAR.test(token)) {
+          if (!glued) out.ltr++
+          glued = false
+          continue
+        }
+        glued = false
       }
-      return rtl > 0 && rtl >= ltr
+      return out
+    }
+
+    /**
+     * Decide a block's direction, with hysteresis so a streamed answer cannot
+     * flicker: a block that is already RTL stays RTL until the text is clearly
+     * Latin (twice as many Latin words), while a block with no verdict yet turns
+     * RTL as soon as Arabic words match the Latin ones. A block with no Arabic
+     * word at all is released, so English prose quoting one Arabic word never
+     * flips.
+     *
+     * `npm install ثم أعد التشغيل`, `Error: فشل الاتصال` and
+     * `شغّل npx @deepseek-ai/dsh web` all start Latin but are Arabic sentences:
+     * the first-strong rule gets every one of them wrong.
+     *
+     * @param text - Block text.
+     * @param currentlyRtl - Whether this plugin already set RTL on the block.
+     * @returns true when the block should be RTL.
+     */
+    function isRtlDominant(text, currentlyRtl) {
+      var counts = weigh(text)
+      if (!counts.rtl) return false
+      if (currentlyRtl) return counts.ltr < counts.rtl * 2
+      return counts.rtl >= counts.ltr
     }
 
     /** Text of a block, ignoring anything inside a skipped element (code, inputs…). */
@@ -196,7 +258,7 @@ function dshArabicClient() {
       if (!enabled || !isBlockCandidate(el)) return
       var ours = el.getAttribute(MARK) === '1'
       if (el.getAttribute('dir') && !ours) return
-      var want = isRtlDominant(blockText(el))
+      var want = isRtlDominant(blockText(el), ours)
       if (want && !ours) {
         el.setAttribute(MARK, '1')
         el.setAttribute('dir', 'rtl')
@@ -355,12 +417,16 @@ function dshArabicClient() {
       return enabled
     }
 
-    // Public face: used by this plugin's own settings row, and by anyone who
-    // wants to script the layer. Kept tiny on purpose.
+    // Public face: used by this plugin's own settings row, by the tests, and by
+    // anyone who wants to script the layer. Kept tiny on purpose.
     window.__dshArabic = {
       isEnabled: function () { return enabled },
       setEnabled: setEnabled,
-      toggle: function () { return setEnabled(!enabled) }
+      toggle: function () { return setEnabled(!enabled) },
+      /** Decision for one string: 'rtl' or null. Exposed for tests and debugging. */
+      classify: function (text) { return isRtlDominant(text) ? 'rtl' : null },
+      /** The raw counts behind the decision, for diagnostics. */
+      weigh: function (text) { return weigh(text) }
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot)

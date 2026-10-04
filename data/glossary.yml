@@ -1,0 +1,229 @@
+# Glossary — the single source of truth for Arabic terminology.
+#
+# Machine-readable on purpose: a translation platform (Weblate, Crowdin, Pontoon)
+# can import it, and `scripts/status.mjs` reports drift against it. `ar` is what
+# ships; `avoid` lists the renderings that were considered and rejected, so a new
+# batch does not relitigate them.
+#
+# Rules:
+#   - `do_not_translate: true` means the term stays Latin in Arabic copy.
+#   - Ordered from the most load-bearing terms to the least.
+
+- term: session
+  en: session
+  ar: الجلسة
+  avoid: [المحادثة]
+  notes: A conversation with the agent. Never "chat".
+
+- term: workspace
+  en: workspace
+  ar: مساحة العمل
+  avoid: [الفضاء, الورشة]
+
+- term: agent
+  en: agent
+  ar: وكيل
+  avoid: [عميل, روبوت]
+
+- term: subagent
+  en: subagent
+  ar: وكيل فرعي
+  notes: Child agent. Keep the "فرعي" qualifier.
+
+- term: tool
+  en: tool
+  ar: أداة
+  avoid: [آلة]
+
+- term: plugin
+  en: plugin
+  ar: بلاقن
+  avoid: [إضافة]
+  notes: |
+    Deliberate: it is the form Arabic-speaking developers use in speech. `plugin`
+    stays Latin in technical namespaces (package names, paths, CLI output). See
+    the Terminology note in README.md for the rationale.
+
+- term: bundle
+  en: bundle
+  ar: حزمة
+  notes: A plugin bundle. "package" is الحزمة البرمجية to keep the two apart.
+
+- term: provider
+  en: provider
+  ar: مزوّد
+
+- term: model
+  en: model
+  ar: موديل
+  avoid: [نموذج]
+  notes: Loanword is the developer convention; "نموذج" reads as a data model here.
+
+- term: token
+  en: token
+  ar: توكن
+  avoid: [رمز]
+  notes: LLM tokens. "رمز" is reserved for codes and identifiers.
+
+- term: context
+  en: context
+  ar: السياق
+
+- term: reasoning
+  en: reasoning
+  ar: الاستدلال
+  avoid: [التفكير]
+  notes: The model's reasoning tokens. "تفكير" is used for the Think column only.
+
+- term: effort
+  en: effort
+  ar: الجهد
+  notes: As in reasoning effort.
+
+- term: system prompt
+  en: system prompt
+  ar: موجّه النظام
+  avoid: [طلب النظام]
+  notes: Not "the system's request" — this is the instruction that steers the model.
+
+- term: turn
+  en: turn
+  ar: الدورة
+  avoid: [الجولة]
+  notes: One model turn. "جولة" is round-based (iterations), not a turn.
+
+- term: step
+  en: step
+  ar: خطوة
+
+- term: goal
+  en: goal
+  ar: هدف
+
+- term: plan
+  en: plan
+  ar: خطة
+
+- term: workflow
+  en: workflow
+  ar: سير عمل
+
+- term: permission
+  en: permission
+  ar: صلاحية
+  avoid: [إذن]
+
+- term: approval
+  en: approval
+  ar: موافقة
+
+- term: credential
+  en: credential
+  ar: اعتماد
+  avoid: [بيانات الدخول]
+
+- term: account
+  en: account
+  ar: حساب
+
+- term: sandbox
+  en: sandbox
+  ar: البيئة المعزولة
+  avoid: [الصندوق الرملي]
+  notes: Full form on first use, "بيئة معزولة" in running copy.
+
+- term: terminal
+  en: terminal
+  ar: الطرفية
+  avoid: [الطرفية الطرفية, التيرمنال]
+
+- term: job
+  en: job
+  ar: مهمة
+  notes: Background job. A scheduled item is also مهمة; the panel disambiguates.
+
+- term: skill
+  en: skill
+  ar: مهارة
+
+- term: compaction
+  en: compaction
+  ar: ضغط
+  notes: Context compaction.
+
+- term: checkpoint
+  en: checkpoint
+  ar: نقطة استرجاع
+
+- term: trajectory
+  en: trajectory
+  ar: المسار
+
+- term: code
+  en: code
+  ar: الكود
+  avoid: [الشيفرة]
+  notes: Unified by data/term-map.json so batches cannot split it again.
+
+- term: cache
+  en: cache
+  ar: الكاش
+  avoid: [الذاكرة المؤقتة]
+  notes: |
+    Developer speech. The token-usage family reads إصابة الكاش / إدخال من الكاش /
+    كتابة في الكاش; "إصابة الذاكرة المؤقتة" was a literal calque and was removed.
+
+- term: archive
+  en: archive
+  ar: أرشفة
+
+- term: queue
+  en: queue
+  ar: قائمة الانتظار
+
+- term: attachment
+  en: attachment
+  ar: مرفق
+
+- term: preview
+  en: preview
+  ar: معاينة
+
+- term: default
+  en: default
+  ar: افتراضي
+
+- term: enable / disable
+  en: enable, disable
+  ar: تشغيل, إيقاف
+  avoid: [تمكين, تعطيل, تفعيل]
+  notes: Preferred pair. "تفعيل" appears only where the noun form is required.
+
+- term: settings
+  en: settings
+  ar: الإعدادات
+  notes: A single one is إعداد; a preset is إعداد مسبق (see: agent preset).
+
+- term: agent preset
+  en: agent preset
+  ar: إعداد مسبق للوكيل
+  avoid: [وضع]
+
+- term: shortcut
+  en: shortcut
+  ar: مفتاح اختصار
+
+# Kept in Latin script in Arabic copy.
+- term: brand and protocol names
+  en: DSH, DeepSeek, DeepSeek Harness, JSON, JSONL, YAML, Markdown, HTML, CSS, API, URL, HTTP, HTTPS, MCP, SDK, CLI, pnpm, npm, Git, GitHub, React, TypeScript, Node, Windows, macOS, Linux
+  do_not_translate: true
+
+- term: slash commands
+  en: /goal, /plan, /compact, /export, /feedback, /permission
+  do_not_translate: true
+  notes: Typed literally by the user, so the token stays verbatim even in Arabic UI.
+
+- term: application names
+  en: VS Code, Cursor, Zed, PyCharm, IntelliJ IDEA, Windows Terminal, …
+  do_not_translate: true
+  notes: Product names under open-in-app.
