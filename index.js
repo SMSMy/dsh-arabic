@@ -24,13 +24,13 @@ const STYLE_MARK = 'dsh-arabic'
 const INSTALL_FLAG = '__dshArabicInstalled'
 
 const CSS = `
-/* dsh-arabic — paragraph direction comes from the paragraph, not the shell. */
+/* dsh-arabic — direction is decided per block by script dominance, not by the
+   first strong character. The marker attribute means "we set the direction". */
 [data-dsh-arabic-bidi="1"] {
-  unicode-bidi: plaintext;
   text-align: start;
 }
 
-/* Code, paths, terminal output and identifiers stay LTR inside RTL prose. */
+/* Code, paths and terminal output stay LTR inside an RTL block. */
 pre,
 code,
 kbd,
@@ -44,20 +44,13 @@ samp,
   text-align: left;
 }
 
-/* Composer, search boxes and other inputs follow what is being typed. */
+/* The composer and search boxes follow what is being typed. */
 textarea[dir="rtl"],
 input[dir="rtl"] {
   text-align: right;
 }
 
-textarea[dir="auto"],
-input[dir="auto"],
-[contenteditable][dir="auto"] {
-  unicode-bidi: plaintext;
-  text-align: start;
-}
-
-/* Keep LTR chrome inside a marked block from inheriting RTL flow. */
+/* Keep LTR chrome inside an RTL block from inheriting RTL flow. */
 [data-dsh-arabic-bidi="1"] button,
 [data-dsh-arabic-bidi="1"] input,
 [data-dsh-arabic-bidi="1"] select,
@@ -69,17 +62,35 @@ input[dir="auto"],
 /** Runs in the page. Serialized with toString(), so it must be self-contained. */
 function dshArabicClient() {
   var MARK = 'data-dsh-arabic-bidi'
+  var INPUT_MARK = 'data-dsh-arabic-input'
   var STYLE_ID = 'dsh-arabic-style'
   var STORE_KEY = 'dsh-arabic:rtl'
   var INSTALL_FLAG = '__dshArabicInstalled'
-  // Strong-RTL characters: Arabic, Arabic Supplement/Extended, presentation
-  // forms, Hebrew, Syriac, Thaana, NKo.
-  var STRONG_RTL = /[\u0591-\u05F4\u0600-\u06FF\u0700-\u074F\u0750-\u077F\u0780-\u07BF\u08A0-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/
-  var SKIP_TAGS = {
-    SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, TEXTAREA: 1, INPUT: 1,
-    SVG: 1, MATH: 1, PRE: 1, CODE: 1, KBD: 1, SAMP: 1
+
+  // Strong RTL scripts: Hebrew, Arabic, Syriac, Thaana, NKo, Samaritan,
+  // Arabic Extended-A and the Arabic presentation forms. Persian and Urdu sit
+  // inside the Arabic blocks.
+  var RTL_CHAR = /[\u0590-\u05FF\u0600-\u06FF\u0700-\u074F\u0750-\u077F\u0780-\u07BF\u07C0-\u07FF\u0800-\u083F\u08A0-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/
+  /** Strong left-to-right letters, used only to weigh against RTL. */
+  var LATIN_CHAR = /[A-Za-z\u00C0-\u024F]/
+  /**
+   * Word separator: whitespace only, deliberately not punctuation. Splitting on
+   * non-letters breaks identifiers into their parts, so `@deepseek-ai/dsh` would
+   * count as three Latin words and could outvote the Arabic sentence holding it.
+   * One identifier is one word.
+   */
+  var SEPARATOR = /\s+/u
+  /** Elements whose direction is meaningful as authored — never touched. */
+  var SKIP = {
+    CODE: 1, PRE: 1, KBD: 1, SAMP: 1, VAR: 1, TT: 1,
+    SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, TEMPLATE: 1,
+    INPUT: 1, TEXTAREA: 1, SELECT: 1, OPTION: 1,
+    SVG: 1, PATH: 1, CANVAS: 1, IMG: 1, VIDEO: 1, AUDIO: 1
   }
-  var BLOCKED_SELECTOR = 'pre,code,kbd,samp,textarea,input,script,style,svg,[contenteditable]'
+  /** Containers judged on their whole subtree: a list only moves its markers
+   *  when the list itself flips, and a table only reorders when it flips. */
+  var CONTAINER = { TABLE: 1, UL: 1, OL: 1, DL: 1 }
+  var SKIP_SELECTOR = 'pre,code,kbd,samp,var,tt,script,style,noscript,template,input,textarea,select,option,svg,path,canvas,img,video,audio'
 
   try {
     if (window[INSTALL_FLAG]) return
@@ -96,50 +107,145 @@ function dshArabicClient() {
       ;(document.head || document.documentElement).appendChild(style)
     }
 
-    function isBlocked(el) {
-      return !!(el && el.closest && el.closest(BLOCKED_SELECTOR))
+    /**
+     * Estimate a block's direction by script dominance.
+     *
+     * - Unit: one whitespace-delimited token, so identifiers, paths and package
+     *   names count once.
+     * - Classification: a token holding any RTL character is an RTL word;
+     *   otherwise a token holding any Latin letter is an LTR word. Mixed tokens
+     *   resolve to RTL, because RTL prose embeds Latin terms far more often than
+     *   the reverse.
+     * - Neutral: tokens with no strong letters (numbers, punctuation) count as
+     *   neither.
+     * - Tie resolves to RTL; a block with no RTL word at all is left untouched,
+     *   so English content is never flipped.
+     *
+     * This is why the first strong character is the wrong rule here: in
+     * `npm install ثم أعد التشغيل` and `Error: فشل الاتصال` the line starts
+     * Latin, but the sentence is Arabic and must be read as Arabic.
+     */
+    function isRtlDominant(text) {
+      if (!text) return false
+      var tokens = text.split(SEPARATOR)
+      var rtl = 0
+      var ltr = 0
+      for (var i = 0; i < tokens.length; i++) {
+        var token = tokens[i]
+        if (!token) continue
+        if (RTL_CHAR.test(token)) rtl++
+        else if (LATIN_CHAR.test(token)) ltr++
+      }
+      return rtl > 0 && rtl >= ltr
     }
 
-    function blockOf(el) {
-      var node = el
-      while (node && node !== document.body && node !== document.documentElement) {
-        if (!SKIP_TAGS[node.tagName]) {
-          var display = ''
-          try { display = getComputedStyle(node).display || '' } catch (err) { display = '' }
-          if (display && display.indexOf('inline') !== 0) return node
-        }
-        node = node.parentElement
-      }
-      return null
-    }
-
-    function markSubtree(root) {
-      if (!enabled || !root) return
-      if (root.nodeType === 1) {
-        if (SKIP_TAGS[root.tagName] || isBlocked(root)) return
-      } else if (root.nodeType !== 3 && root.nodeType !== 9 && root.nodeType !== 11) {
-        return
-      }
-      var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null)
+    /** Text of a block, ignoring anything inside a skipped element (code, inputs…). */
+    function blockText(el) {
+      var out = ''
+      var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null)
       var node
       while ((node = walker.nextNode())) {
-        var text = node.nodeValue
-        if (!text || !STRONG_RTL.test(text)) continue
         var parent = node.parentElement
-        if (!parent || isBlocked(parent)) continue
-        var block = blockOf(parent)
-        if (block && block.getAttribute(MARK) !== '1') block.setAttribute(MARK, '1')
+        if (parent && parent.closest && parent.closest(SKIP_SELECTOR)) continue
+        out += node.nodeValue || ''
+        out += ' '
+      }
+      return out
+    }
+
+    function containsRtl(el) {
+      var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null)
+      var node
+      while ((node = walker.nextNode())) {
+        if (RTL_CHAR.test(node.nodeValue || '')) return true
+      }
+      return false
+    }
+
+    function isBlockCandidate(el) {
+      if (!el || el.nodeType !== 1 || SKIP[el.tagName]) return false
+      if (CONTAINER[el.tagName]) return true
+      var display = ''
+      try { display = getComputedStyle(el).display || '' } catch (err) { display = '' }
+      return !!display && display.indexOf('inline') !== 0
+    }
+
+    /** Nearest block (or container) ancestor, starting at the node itself. */
+    function blockOf(node) {
+      var el = node && node.nodeType === 1 ? node : (node ? node.parentElement : null)
+      var fallback = null
+      while (el && el !== document.body && el !== document.documentElement) {
+        if (SKIP[el.tagName]) { el = el.parentElement; continue }
+        if (CONTAINER[el.tagName]) return el
+        if (!fallback) {
+          var display = ''
+          try { display = getComputedStyle(el).display || '' } catch (err) { display = '' }
+          if (display && display.indexOf('inline') !== 0) fallback = el
+        }
+        el = el.parentElement
+      }
+      return fallback
+    }
+
+    /**
+     * Set, keep or withdraw the direction for one block. A `dir` we did not set
+     * is left alone: that is the opt-out for any block this estimator gets
+     * wrong.
+     */
+    function reconcile(el) {
+      if (!enabled || !isBlockCandidate(el)) return
+      var ours = el.getAttribute(MARK) === '1'
+      if (el.getAttribute('dir') && !ours) return
+      var want = isRtlDominant(blockText(el))
+      if (want && !ours) {
+        el.setAttribute(MARK, '1')
+        el.setAttribute('dir', 'rtl')
+      } else if (!want && ours) {
+        el.removeAttribute(MARK)
+        el.removeAttribute('dir')
       }
     }
 
-    function syncInput(el) {
-      if (!el || !el.getAttribute) return
-      var value = el.isContentEditable ? el.textContent : el.value
-      var dir = STRONG_RTL.test(value || '') ? 'rtl' : 'auto'
-      if (el.getAttribute('dir') !== dir) el.setAttribute('dir', dir)
+    /** Reconcile the blocks touched by a subtree (or one text node). */
+    function scan(root) {
+      if (!enabled || !root) return
+      if (root.nodeType === 3) {
+        reconcile(blockOf(root))
+        return
+      }
+      if (root.nodeType !== 1 && root.nodeType !== 9 && root.nodeType !== 11) return
+      var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null)
+      var seen = []
+      var node
+      while ((node = walker.nextNode())) {
+        if (!RTL_CHAR.test(node.nodeValue || '')) continue
+        var parent = node.parentElement
+        if (!parent || (parent.closest && parent.closest(SKIP_SELECTOR))) continue
+        var block = blockOf(parent)
+        if (!block || seen.indexOf(block) !== -1) continue
+        seen.push(block)
+        reconcile(block)
+      }
     }
 
-    function allInputs() {
+    /** Composer, search boxes and any editable surface follow what is typed. */
+    function syncInput(el) {
+      if (!enabled || !el || !el.getAttribute) return
+      var ours = el.getAttribute(INPUT_MARK) === '1'
+      if (el.getAttribute('dir') && !ours) return
+      var value = el.isContentEditable ? el.textContent : el.value
+      var text = String(value == null ? '' : value)
+      var want = isRtlDominant(text) ? 'rtl' : 'auto'
+      if (el.getAttribute('dir') !== want) el.setAttribute('dir', want)
+      if (!ours) el.setAttribute(INPUT_MARK, '1')
+    }
+
+    function editable(el) {
+      if (!el || el.nodeType !== 1) return false
+      return el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable === true
+    }
+
+    function allEditable() {
       var out = []
       try { out = document.querySelectorAll('textarea,input,[contenteditable]') } catch (err) { out = [] }
       return out
@@ -149,29 +255,85 @@ function dshArabicClient() {
       var marked = []
       try { marked = document.querySelectorAll('[' + MARK + ']') } catch (err) { marked = [] }
       for (var i = 0; i < marked.length; i++) {
-        try { marked[i].removeAttribute(MARK) } catch (err) {}
+        try { marked[i].removeAttribute(MARK); marked[i].removeAttribute('dir') } catch (err) {}
+      }
+      var inputs = []
+      try { inputs = document.querySelectorAll('[' + INPUT_MARK + ']') } catch (err) { inputs = [] }
+      for (var j = 0; j < inputs.length; j++) {
+        try {
+          var dir = inputs[j].getAttribute('dir')
+          if (dir === 'rtl' || dir === 'auto') inputs[j].removeAttribute('dir')
+          inputs[j].removeAttribute(INPUT_MARK)
+        } catch (err) {}
       }
     }
 
     var queue = []
+    var forced = []
     var timer = null
+
+    function schedule(node, force) {
+      if (!enabled || !node) return
+      if (force) {
+        if (forced.length < 200 && forced.indexOf(node) === -1) forced.push(node)
+      } else if (queue.length < 500 && queue.indexOf(node) === -1) {
+        queue.push(node)
+      }
+      if (timer !== null) return
+      timer = setTimeout(flush, 60)
+    }
 
     function flush() {
       timer = null
+      if (!enabled) { queue.length = 0; forced.length = 0; return }
+      var forcedItems = forced.slice()
+      forced.length = 0
       var items = queue.slice()
       queue.length = 0
-      if (!enabled) return
-      for (var i = 0; i < items.length; i++) {
-        try { markSubtree(items[i]) } catch (err) {}
+      var i
+      for (i = 0; i < forcedItems.length; i++) {
+        try {
+          var el = forcedItems[i]
+          if (!el || el.nodeType !== 1) continue
+          var block = blockOf(el)
+          if (block) reconcile(block)
+          if (containsRtl(el) === false) reconcile(el)
+        } catch (err) {}
+      }
+      for (i = 0; i < items.length; i++) {
+        try { scan(items[i]) } catch (err) {}
       }
     }
 
-    function schedule(node) {
-      if (!enabled || !node) return
-      if (queue.length > 500) return
-      queue.push(node)
-      if (timer !== null) return
-      timer = setTimeout(flush, 60)
+    function boot() {
+      ensureStyle()
+      if (enabled) {
+        try { scan(document.body) } catch (err) {}
+        var inputs = allEditable()
+        for (var i = 0; i < inputs.length; i++) syncInput(inputs[i])
+      }
+
+      document.addEventListener('input', function (event) {
+        if (!enabled) return
+        var target = event.target
+        if (editable(target)) syncInput(target)
+      }, true)
+
+      var observer = new MutationObserver(function (records) {
+        if (!enabled) return
+        for (var r = 0; r < records.length; r++) {
+          var record = records[r]
+          if (record.type === 'characterData') {
+            schedule(record.target)
+            continue
+          }
+          if (record.target && record.target.nodeType === 1) schedule(record.target, true)
+          for (var a = 0; a < record.addedNodes.length; a++) schedule(record.addedNodes[a])
+        }
+      })
+      // Attributes are deliberately not observed: this layer writes attributes,
+      // and watching them would feed its own writes back in.
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true })
     }
 
     /** Apply or fully revert the layer, and remember the choice. */
@@ -179,19 +341,13 @@ function dshArabicClient() {
       enabled = !!next
       try { window.localStorage.setItem(STORE_KEY, enabled ? 'on' : 'off') } catch (err) {}
       if (enabled) {
-        try { markSubtree(document.body) } catch (err) {}
-        for (var i = 0; i < allInputs().length; i++) syncInput(allInputs()[i])
+        try { scan(document.body) } catch (err) {}
+        var inputs = allEditable()
+        for (var i = 0; i < inputs.length; i++) syncInput(inputs[i])
       } else {
         queue.length = 0
+        forced.length = 0
         unmarkAll()
-        var inputs = allInputs()
-        for (var j = 0; j < inputs.length; j++) {
-          try {
-            if (inputs[j].getAttribute('dir') === 'rtl' || inputs[j].getAttribute('dir') === 'auto') {
-              inputs[j].removeAttribute('dir')
-            }
-          } catch (err) {}
-        }
       }
       try {
         window.dispatchEvent(new CustomEvent('dsh-arabic:change', { detail: { enabled: enabled } }))
@@ -199,38 +355,8 @@ function dshArabicClient() {
       return enabled
     }
 
-    function boot() {
-      ensureStyle()
-      if (enabled) {
-        try { markSubtree(document.body) } catch (err) {}
-        var inputs = allInputs()
-        for (var i = 0; i < inputs.length; i++) syncInput(inputs[i])
-      }
-
-      document.addEventListener('input', function (event) {
-        var target = event.target
-        if (!enabled || !target) return
-        if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.isContentEditable) {
-          syncInput(target)
-        }
-      }, true)
-
-      var observer = new MutationObserver(function (records) {
-        if (!enabled) return
-        for (var r = 0; r < records.length; r++) {
-          var record = records[r]
-          if (record.type === 'childList') {
-            for (var a = 0; a < record.addedNodes.length; a++) schedule(record.addedNodes[a])
-          } else if (record.type === 'characterData') {
-            schedule(record.target)
-          }
-        }
-      })
-      observer.observe(document.body, { childList: true, subtree: true, characterData: true })
-    }
-
-    // Public face, used by this plugin's own settings row (and by anyone who
-    // wants to script the layer). Kept tiny on purpose.
+    // Public face: used by this plugin's own settings row, and by anyone who
+    // wants to script the layer. Kept tiny on purpose.
     window.__dshArabic = {
       isEnabled: function () { return enabled },
       setEnabled: setEnabled,

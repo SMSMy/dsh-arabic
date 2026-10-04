@@ -1,9 +1,13 @@
 /**
- * verify-rtl.mjs — offline behaviour check for the bidi/RTL layer.
+ * verify-rtl.mjs — offline behaviour check for the direction layer.
  *
  * The client payload normally runs inside the DSH page; there is no browser
  * here, so this test installs a minimal DOM shim and runs the *real* injected
- * script against it, then asserts the marking rules.
+ * script against it, then asserts the direction decisions.
+ *
+ * The cases that matter most are the ones the first-strong rule (dir="auto",
+ * `unicode-bidi: plaintext`) gets wrong: a line that starts with a Latin
+ * identifier but is an Arabic sentence.
  *
  * Run: node tests/verify-rtl.mjs
  */
@@ -43,6 +47,7 @@ class FakeNode {
   getAttribute(name) { return this.attributes.has(name) ? this.attributes.get(name) : null }
   setAttribute(name, value) { this.attributes.set(name, String(value)) }
   removeAttribute(name) { this.attributes.delete(name) }
+  hasAttribute(name) { return this.attributes.has(name) }
 
   closest(selector) {
     const parts = selector.split(',').map((s) => s.trim().toLowerCase())
@@ -126,41 +131,78 @@ globalThis.getComputedStyle = (node) => ({ display: node.display })
 
 /* ---------------------------------------------------------------- fixture --- */
 
-const arabicBlock = el('div')
-const arabicPara = el('p')
-arabicPara.appendChild(text('السلام عليكم، هذا اختبار mixed with English.'))
-arabicBlock.appendChild(arabicPara)
+const MARK = 'data-dsh-arabic-bidi'
 
-const englishBlock = el('div')
-const englishPara = el('p')
-englishPara.appendChild(text('pure english paragraph, should stay untouched'))
-englishBlock.appendChild(englishPara)
+/** Build a paragraph with one text child and return both. */
+function paragraph(value, tag = 'p') {
+  const block = el(tag)
+  const node = text(value)
+  block.appendChild(node)
+  document.body.appendChild(block)
+  return { block, node }
+}
 
+// Arabic-first (the easy case the old tests only covered).
+const arabicFirst = paragraph('كيف حالك Hello')
+// Latin-first Arabic sentence: the case dir="auto" gets wrong.
+const latinFirst = paragraph('Hello كيف حالك')
+const errorLine = paragraph('Error: فشل الاتصال بالخادم')
+const commandLine = paragraph('npm install ثم أعد التشغيل')
+const identifierLine = paragraph('@deepseek-ai/dsh مهم جداً')
+// A tie (one Latin word, one Arabic word) must resolve to RTL.
+const tieLine = paragraph('Hello نص')
+// English prose quoting one Arabic word must NOT flip.
+const englishBody = paragraph('The build failed while parsing the Arabic word سلام in the config file.')
+const pureEnglish = paragraph('pure english paragraph, should stay untouched')
+
+// Code is never judged and never flipped.
 const codeBlock = el('pre')
 const codeInner = el('code')
 codeInner.appendChild(text('const greeting = "مرحبا"'))
 codeBlock.appendChild(codeInner)
+document.body.appendChild(codeBlock)
 
+// Arabic prose containing inline code: the code must not count as Latin words.
+const inlineCodeBlock = el('div')
 const inlineCodePara = el('p')
 inlineCodePara.appendChild(text('شغّل الأمر '))
 const inlineCode = el('code')
 inlineCode.appendChild(text('node verify.mjs'))
 inlineCodePara.appendChild(inlineCode)
-const inlineCodeBlock = el('div')
 inlineCodeBlock.appendChild(inlineCodePara)
+document.body.appendChild(inlineCodeBlock)
 
-const composer = el('textarea')
-composer.value = 'اكتب هنا بالعربية'
+// A list is judged as a container, so its markers move with it.
+const list = el('ul')
+const item1 = el('li'); item1.appendChild(text('عنصر أول'))
+const item2 = el('li'); item2.appendChild(text('عنصر ثانٍ'))
+list.appendChild(item1); list.appendChild(item2)
+document.body.appendChild(list)
 
+// A blockquote of Arabic prose.
+const quote = el('blockquote')
+const quotePara = el('p'); quotePara.appendChild(text('اقتباس عربي'))
+quote.appendChild(quotePara)
+document.body.appendChild(quote)
+
+// An author-set direction on the block itself is the opt-out: never touched.
+const authorBlock = el('div')
+authorBlock.setAttribute('dir', 'ltr')
+authorBlock.appendChild(text('نص عربي هنا'))
+document.body.appendChild(authorBlock)
+
+// Inline wrapper inside a block host.
+const spanHost = el('div')
 const inlineSpan = el('span')
 inlineSpan.display = 'inline'
 inlineSpan.appendChild(text('عنوان مختلط'))
-const spanHost = el('div')
 spanHost.appendChild(inlineSpan)
+document.body.appendChild(spanHost)
 
-for (const node of [arabicBlock, englishBlock, codeBlock, inlineCodeBlock, composer, spanHost]) {
-  document.body.appendChild(node)
-}
+// Composer.
+const composer = el('textarea')
+composer.value = 'اكتب هنا بالعربية'
+document.body.appendChild(composer)
 
 /* ------------------------------------------------------------------- run --- */
 
@@ -184,40 +226,74 @@ if (globalThis.__dshArabicError) {
 
 const results = []
 const check = (label, ok, extra = '') => results.push({ label, ok, extra })
-const MARK = 'data-dsh-arabic-bidi'
+const rtl = (block) => block.getAttribute('dir') === 'rtl' && block.getAttribute(MARK) === '1'
+const untouched = (block) => block.getAttribute('dir') === null && block.getAttribute(MARK) === null
 
-check('Arabic paragraph is marked', arabicPara.getAttribute(MARK) === '1' || arabicBlock.getAttribute(MARK) === '1')
-check('English paragraph is untouched', !englishBlock.getAttribute(MARK) && !englishPara.getAttribute(MARK))
-check('pre/code is never marked', !codeBlock.getAttribute(MARK) && !codeInner.getAttribute(MARK))
-check('inline code does not block marking of its prose', inlineCodeBlock.getAttribute(MARK) === '1' || inlineCodePara.getAttribute(MARK) === '1')
-check('composer switches to rtl', composer.getAttribute('dir') === 'rtl', `dir=${composer.getAttribute('dir')}`)
-check('inline span walks up to its block host', spanHost.getAttribute(MARK) === '1')
+check('Arabic-first sentence becomes RTL', rtl(arabicFirst.block), `dir=${arabicFirst.block.getAttribute('dir')}`)
+check('Latin-first Arabic sentence becomes RTL (first-strong would fail)', rtl(latinFirst.block), `dir=${latinFirst.block.getAttribute('dir')}`)
+check('"Error: فشل الاتصال" becomes RTL', rtl(errorLine.block))
+check('"npm install ثم أعد التشغيل" becomes RTL', rtl(commandLine.block))
+check('a leading identifier counts as one word', rtl(identifierLine.block))
+check('a tie resolves to RTL', rtl(tieLine.block), `dir=${tieLine.block.getAttribute('dir')}`)
+check('English prose quoting one Arabic word stays untouched', untouched(englishBody.block), `dir=${englishBody.block.getAttribute('dir')}`)
+check('pure English stays untouched', untouched(pureEnglish.block))
+check('pre/code is never flipped', untouched(codeBlock) && untouched(codeInner))
+check('inline code does not count as Latin words', rtl(inlineCodePara) || rtl(inlineCodeBlock))
+check('a list container flips as a whole', rtl(list), `dir=${list.getAttribute('dir')}`)
+check('list items are left to inherit', untouched(item1) && untouched(item2))
+check('a blockquote flips', rtl(quote) || rtl(quotePara))
+// An author-set direction on the block itself is the opt-out: never touched.
+check(
+  'an author-set dir is never overridden',
+  authorBlock.getAttribute('dir') === 'ltr' && authorBlock.getAttribute(MARK) === null,
+  `dir=${authorBlock.getAttribute('dir')} mark=${authorBlock.getAttribute(MARK)}`
+)
+check('an inline wrapper walks up to its block host', rtl(spanHost))
+check('composer switches to rtl for Arabic', composer.getAttribute('dir') === 'rtl', `dir=${composer.getAttribute('dir')}`)
+
 check('style element injected', document.getElementById('dsh-arabic-style') !== null)
 check('CSS keeps code LTR', styleRow.text.includes('direction: ltr'))
-check('CSS derives direction from content', styleRow.text.includes('unicode-bidi: plaintext'))
+check('CSS no longer defers to the first strong character', !/unicode-bidi:\s*plaintext/.test(styleRow.text))
 check('observer attached for streamed content', MutationObserver.instances.length === 1)
 
-const lateBlock = el('div')
-const latePara = el('p')
-latePara.appendChild(text('نص وصل متأخراً'))
-lateBlock.appendChild(latePara)
-document.body.appendChild(lateBlock)
 const observer = MutationObserver.instances[0]
+
+// Streamed Arabic arriving in a fresh element.
+const lateBlock = paragraph('نص وصل متأخراً')
 if (observer) {
-  observer.callback([{ type: 'childList', addedNodes: [lateBlock] }])
+  observer.callback([{ type: 'childList', addedNodes: [lateBlock.block], target: document.body }])
   await new Promise((resolve) => setTimeout(resolve, 120))
-  check('streamed Arabic node is marked', lateBlock.getAttribute(MARK) === '1' || latePara.getAttribute(MARK) === '1')
+  check('streamed Arabic node is marked', rtl(lateBlock.block))
 } else {
   check('streamed Arabic node is marked', false, 'no observer instance')
 }
 
+// A block that starts English-only and later receives Arabic must flip.
+const growing = paragraph('Installing packages')
+check('growing block starts untouched', untouched(growing.block))
+growing.node.nodeValue = 'Installing packages ثم نكمل'
+if (observer) {
+  observer.callback([{ type: 'characterData', target: growing.node }])
+  await new Promise((resolve) => setTimeout(resolve, 120))
+  check('appended Arabic flips a growing block', rtl(growing.block), `dir=${growing.block.getAttribute('dir')}`)
+}
+
+// …and a block that becomes English-only again must be released.
+growing.node.nodeValue = 'Installing packages now'
+if (observer) {
+  observer.callback([{ type: 'characterData', target: growing.node }])
+  await new Promise((resolve) => setTimeout(resolve, 120))
+  check('a block that becomes English-only is released', untouched(growing.block), `dir=${growing.block.getAttribute('dir')}`)
+}
+
+// Composer follows the language being typed.
 const inputHandler = document._listeners.find((l) => l.type === 'input')
 if (inputHandler) {
   composer.value = 'now english'
   inputHandler.handler({ target: composer })
-  check('composer flips back to auto for English', composer.getAttribute('dir') === 'auto', `dir=${composer.getAttribute('dir')}`)
+  check('composer returns to auto for English', composer.getAttribute('dir') === 'auto', `dir=${composer.getAttribute('dir')}`)
 } else {
-  check('composer flips back to auto for English', false, 'no input listener')
+  check('composer returns to auto for English', false, 'no input listener')
 }
 
 /* ------------------------------------------- the settings-row control face --- */
@@ -227,24 +303,20 @@ check('layer starts enabled', !!(window.__dshArabic && window.__dshArabic.isEnab
 
 if (window.__dshArabic) {
   window.__dshArabic.setEnabled(false)
-  check('disabling clears existing marks', document.body.getAttribute(MARK) === null && arabicPara.getAttribute(MARK) === null)
+  check('disabling clears existing marks', untouched(latinFirst.block) && untouched(arabicFirst.block))
   check('disabling restores composer direction', composer.getAttribute('dir') === null, `dir=${composer.getAttribute('dir')}`)
   check('disabling is persisted', store.get('dsh-arabic:rtl') === 'off')
 
-  const whileOff = el('div')
-  const pOff = el('p')
-  pOff.appendChild(text('نص عربي بعد الإيقاف'))
-  whileOff.appendChild(pOff)
-  document.body.appendChild(whileOff)
+  const whileOff = paragraph('نص عربي بعد الإيقاف')
   if (observer) {
-    observer.callback([{ type: 'childList', addedNodes: [whileOff] }])
+    observer.callback([{ type: 'childList', addedNodes: [whileOff.block], target: document.body }])
     await new Promise((resolve) => setTimeout(resolve, 120))
   }
-  check('no marking while disabled', whileOff.getAttribute(MARK) === null && pOff.getAttribute(MARK) === null)
+  check('no direction while disabled', untouched(whileOff.block))
 
   window.__dshArabic.setEnabled(true)
-  check('enabling re-marks existing content', arabicPara.getAttribute(MARK) === '1')
-  check('enabling re-marks content added while off', whileOff.getAttribute(MARK) === '1' || pOff.getAttribute(MARK) === '1')
+  check('enabling re-marks existing content', rtl(arabicFirst.block) && rtl(latinFirst.block))
+  check('enabling re-marks content added while off', rtl(whileOff.block))
   check('enabling is persisted', store.get('dsh-arabic:rtl') === 'on')
 }
 
@@ -253,5 +325,5 @@ for (const r of results) {
   if (!r.ok) failed++
   console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.label}${r.extra ? `  (${r.extra})` : ''}`)
 }
-console.log(`\n${results.length - failed}/${results.length} RTL checks passed — ${fileURLToPath(new URL('..', import.meta.url))}`)
+console.log(`\n${results.length - failed}/${results.length} direction checks passed — ${fileURLToPath(new URL('..', import.meta.url))}`)
 process.exit(failed === 0 ? 0 : 1)

@@ -14,20 +14,36 @@ menu is English-only. This plugin fixes both, without patching the app.
 
 ### 1. Bidi-safe RTL rendering (works regardless of UI language)
 
-Every text block that contains Arabic gets `data-dsh-arabic-bidi="1"`, and the
-injected stylesheet gives it `unicode-bidi: plaintext; text-align: start` — the
-CSS form of `dir="auto"`:
+Direction is decided **per block by script dominance**, not by the first strong
+character. The tokenizer splits on whitespace only, so `@deepseek-ai/dsh` counts
+as *one* word rather than three:
 
-| Content | Result |
-|---|---|
-| Arabic paragraph | right-to-left, aligned right |
-| English paragraph | left-to-right, aligned left |
-| Arabic + English mixed | ordered by the Unicode bidi algorithm, numbers and paths intact |
-| `pre` / `code` / inline code | always LTR — code never gets mirrored |
-| Composer, search boxes, `contenteditable` | direction follows what you type |
+| Content | Direction | Why |
+|---|---|---|
+| `كيف حالك Hello` | RTL | Arabic words dominate |
+| `Hello كيف حالك` | RTL | still Arabic words — `dir="auto"` would get this **wrong** |
+| `Error: فشل الاتصال بالخادم` | RTL | the sentence is Arabic, the prefix is not |
+| `npm install ثم أعد التشغيل` | RTL | 3 Arabic words vs 2 Latin ones |
+| `@deepseek-ai/dsh مهم جداً` | RTL | one identifier = one word |
+| `Hello نص` | RTL | a tie resolves to RTL |
+| `The build failed while parsing سلام in the file` | untouched | English prose quoting a word stays LTR |
+| `pre`, `code`, inline code | LTR always | code is never judged and never mirrored |
+| composer, search boxes | follows typing | RTL while Arabic dominates, otherwise native `auto` |
 
-It does **not** flip the whole shell to RTL. Developer UIs are bilingual by
-nature; per-paragraph direction is what keeps both languages readable.
+The browser's own first-strong rule (`dir="auto"`, `unicode-bidi: plaintext`) is
+only right when the *first* strong character happens to match the language of the
+sentence — which in a developer tool is the exception, not the rule. It is still
+used for the value of a composer, where it matches what the user is typing.
+
+If a block's direction is set by the app or by you (`dir="ltr"` in the markup),
+this layer never touches it: that is the escape hatch for any block the estimator
+gets wrong.
+
+> The word-dominance approach and the "one identifier is one word" rule follow the
+> community consensus pioneered by
+> [haythamat/dsh-client-ui-rtl](https://github.com/haythamat/dsh-client-ui-rtl);
+> this implementation is independent, adds the composer/toggle layer, and is
+> covered by its own tests.
 
 ### 2. Arabic UI language pack
 
@@ -137,15 +153,30 @@ update never breaks the interface. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Compatibility
 
-Built against **DSH 0.2.0-rc.2**. The plugin relies on two documented-but-internal
-seams: the `webserver/index-inject` event and the client `locale` service. If a
-future release changes them, the plugin degrades safely — the RTL layer is
-wrapped in `try/catch` and never breaks an index render, and the language pack
-simply stops registering. Incompatible versions are reported as issues.
+Built and tested against **DSH 0.2.0-rc.2** on the Desktop app and the served Web
+UI. Both surfaces use the same two documented-but-internal seams — the
+`webserver/index-inject` event and the client `locale` service — and the plugin
+degrades safely if either changes: the direction layer is wrapped so it can never
+break an index render, and the language pack simply stops registering. On the
+Desktop app the injection table is collected once at host startup, so a restart
+(not a page refresh) is what applies it.
+
+**Interactions with other Arabic/RTL plugins.** This one and `dsh-client-ui-rtl`
+or `dsh-rtl-fix` both set `dir` on content blocks; installing two of them means
+they take turns and the last writer wins. The settings row in *General* turns
+this layer off, which is the clean way to combine them. Two plugins registering
+the `ar` language (`@mimateinn/dsh-i18n` does, with different coverage) will also
+fight over the same language id — pick one.
+
+**Terminology.** `بلاقن` is a deliberate choice: it is the form Arabic-speaking
+developers use in speech, while `plugin` stays in the technical namespaces
+(package names, paths, CLI output). Prefer the Latin word in the interface? The
+dictionary is one edit away — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Credits
 
 - UI strings and key names come from [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) (MIT).
+- The word-dominance direction rule and the "one identifier is one word" insight follow the community consensus pioneered by [haythamat/dsh-client-ui-rtl](https://github.com/haythamat/dsh-client-ui-rtl) (MIT); this implementation is independent.
 - Arabic translations in this repository are original work, released under MIT.
 
 ## License

@@ -50,5 +50,17 @@ jobs:
           node scripts/build-client.mjs
           git diff --exit-code lib/client.js
 
+      - name: Is this version already on npm?
+        id: check
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "dsh-arabic@$VERSION" version >/dev/null 2>&1; then
+            echo "dsh-arabic@$VERSION is already published - skipping the publish step" >> "$GITHUB_STEP_SUMMARY"
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish with provenance
+        if: steps.check.outputs.published == 'false'
         run: npm publish --access public --provenance
