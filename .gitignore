@@ -1,8 +1,17 @@
+# --- ignored on purpose (local only) ---
+# local agent doctrine kit: not part of the published project
+agent-kit/
+# local agent contract (adapted from agent-kit/); keep the repo artifact-free
+AGENTS.md
+
+# --- tooling / build output ---
 node_modules/
 .cache/
 _recon/
 *.log
-.DS_Store
-Thumbs.db
 *.tgz
 .tmp/
+
+# --- OS noise ---
+.DS_Store
+Thumbs.db
