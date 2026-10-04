@@ -45,6 +45,11 @@ gets wrong.
 > this implementation is independent, adds the composer/toggle layer, and is
 > covered by its own tests.
 
+![Before and after: first-strong versus script dominance](https://raw.githubusercontent.com/SMSMy/dsh-arabic/main/docs/direction.png)
+
+<sub>Rendered by Chromium with the real bidi algorithm: both columns contain the same five
+lines, each starting with a Latin token. Source: [docs/direction.html](docs/direction.html).</sub>
+
 ### 2. Arabic UI language pack
 
 Registered through the official locale service (`ctx.locale.addLanguage` +

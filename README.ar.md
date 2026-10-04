@@ -40,6 +40,10 @@ DSH لا يدعم RTL ولا يوفّر لغة عربية. خلط النص ال�
 > الذي بدأه [haythamat/dsh-client-ui-rtl](https://github.com/haythamat/dsh-client-ui-rtl)؛
 > وهذا التنفيذ مستقل، ويضيف طبقة مربّع الكتابة والمفتاح، ومغطّى باختباراته.
 
+![قبل وبعد: قاعدة أول حرف قوي مقابل هيمنة الكلمات](https://raw.githubusercontent.com/SMSMy/dsh-arabic/main/docs/direction.png)
+
+<sub>مُصيَّرة بمتصفح Chromium بمحرّك bidi الحقيقي: العمودان يحملان الأسطر الخمسة نفسها، وكلٌّ منها يبدأ بمُعرِّف لاتيني. المصدر: [docs/direction.html](docs/direction.html).</sub>
+
 **لا يقلب الواجهة كلها إلى RTL.** واجهات المطوّرين ثنائية اللغة بطبيعتها،
 واتجاه كل كتلة على حدة هو ما يُبقي اللغتين مقروءتين.
 

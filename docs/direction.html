@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ar" dir="ltr">
+<head>
+<meta charset="utf-8">
+<title>dsh-arabic — direction rule, rendered</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 28px 32px 32px;
+    background: #14161c; color: #e7e9ee;
+    font-family: "Segoe UI", Tahoma, "Noto Naskh Arabic", sans-serif;
+  }
+  h1 { font-size: 19px; margin: 0 0 4px; font-weight: 600; }
+  .sub { font-size: 12.5px; color: #9aa3b2; margin-bottom: 22px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .panel { border: 1px solid #262a34; border-radius: 10px; overflow: hidden; background: #191c23; }
+  .panel h2 {
+    margin: 0; padding: 10px 14px; font-size: 13px; font-weight: 600;
+    border-bottom: 1px solid #262a34; background: #1d212a;
+  }
+  .panel h2 .tag { font-weight: 400; color: #9aa3b2; }
+  .before h2 { color: #ffb4a8; }
+  .after h2 { color: #9ae6b4; }
+  .row { padding: 11px 14px; border-bottom: 1px solid #22262f; font-size: 14.5px; line-height: 1.7; }
+  .row:last-child { border-bottom: 0; }
+  code, .tok {
+    font-family: "Cascadia Mono", Consolas, monospace; font-size: 12.5px;
+    background: #232833; border-radius: 4px; padding: 1px 5px;
+  }
+  .note { margin-top: 18px; font-size: 12px; color: #8b93a1; line-height: 1.6; }
+  .caption { font-size: 11.5px; color: #7f8794; padding: 6px 14px 0; }
+</style>
+</head>
+<body>
+
+<h1>Mixed Arabic + English: what each rule renders</h1>
+<div class="sub">Rendered by Chromium with the real bidi algorithm. Text samples, not a screenshot of the app UI.</div>
+
+<div class="grid">
+
+  <section class="panel before">
+    <h2>Before <span class="tag">— first strong character (<code>dir="auto"</code>, <code>unicode-bidi: plaintext</code>)</span></h2>
+
+    <div class="row" dir="auto">Hello كيف حالك</div>
+    <div class="row" dir="auto">Error: فشل الاتصال بالخادم</div>
+    <div class="row" dir="auto">npm install ثم أعد التشغيل</div>
+    <div class="row" dir="auto">@deepseek-ai/dsh مهم جدًا</div>
+    <div class="row" dir="auto">The build failed while parsing سلام in the config file.</div>
+  </section>
+
+  <section class="panel after">
+    <h2>After <span class="tag">— script dominance, one identifier = one word</span></h2>
+
+    <div class="row" dir="rtl">Hello كيف حالك</div>
+    <div class="row" dir="rtl">Error: فشل الاتصال بالخادم</div>
+    <div class="row" dir="rtl">npm install ثم أعد التشغيل</div>
+    <div class="row" dir="rtl">@deepseek-ai/dsh مهم جدًا</div>
+    <div class="row" dir="ltr">The build failed while parsing سلام in the config file.</div>
+  </section>
+
+</div>
+
+<div class="note">
+  Every line starts with a Latin token, so the first-strong rule keeps an LTR paragraph base:
+  the Arabic runs are laid out left-to-right and the sentence reads in the wrong order.
+  Dominance counts words instead — <code>@deepseek-ai/dsh</code> is one word, a tie resolves to RTL,
+  and a block with no Arabic word (last line) is left untouched.
+  <br>Code blocks, paths and the composer are handled by the same layer and are not shown here.
+</div>
+
+</body>
+</html>
