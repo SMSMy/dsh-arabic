@@ -118,6 +118,26 @@ if (existsSync(overridesPath)) {
   }
 }
 
+/* ------------------------------------------------------- term normalization --- */
+
+// A glossary is a promise across batches. These replacements enforce the few
+// decisions that a parallel batch can silently split (code, system prompt).
+const termMapPath = join(ROOT, 'data', 'term-map.json')
+let termsApplied = 0
+if (existsSync(termMapPath)) {
+  const { terms = [] } = JSON.parse(readFileSync(termMapPath, 'utf8'))
+  for (const [from, to] of terms) {
+    for (const [ns, dict] of Object.entries(merged)) {
+      for (const key of Object.keys(dict)) {
+        if (typeof dict[key] === 'string' && dict[key].includes(from)) {
+          dict[key] = dict[key].split(from).join(to)
+          termsApplied++
+        }
+      }
+    }
+  }
+}
+
 /* ------------------------------------------------------------- validate --- */
 
 const vars = (s) => (s.match(/\{[a-zA-Z0-9_.]+\}|%s|\{\{?[a-zA-Z0-9_]+\}?\}/g) || []).sort().join(',')
@@ -139,6 +159,7 @@ console.log(`chunks merged      : ${chunks}`)
 console.log(`namespaces covered : ${Object.keys(merged).length} / ${Object.keys(english).length}`)
 console.log(`keys covered       : ${doneKeys} / ${totalKeys} (${coverage}%)`)
 console.log(`overrides applied  : ${applied}`)
+console.log(`term replacements  : ${termsApplied}`)
 console.log(`padding restored   : ${padded}`)
 
 if (problems.length) {

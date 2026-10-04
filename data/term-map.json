@@ -1,0 +1,9 @@
+{
+  "_comment": "Term normalization, applied to every string after the batches and the overrides are merged, so later translation batches cannot reintroduce a split. The list is ordered: longer, more specific forms first. Keep it short and justified — every entry is a decision that changes shipped copy.",
+  "terms": [
+    ["الشيفرة", "الكود"],
+    ["شيفرة", "كود"],
+    ["طلب النظام", "موجّه النظام"],
+    ["طلب نظام", "موجّه نظام"]
+  ]
+}

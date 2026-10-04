@@ -34,5 +34,13 @@
   "subagent#duration.yearsMonths": "~{years}سن {months}ش",
   "subagent#duration.exactDays": "{days}ي {hours}س {minutes}د {seconds}ث",
   "trajectory#unit.milliseconds": "{value} م.ث",
-  "trajectory#unit.seconds": "{value} ث"
+  "trajectory#unit.seconds": "{value} ث",
+
+  "_voice_comment": "Readability pass over the most visible surfaces: the token-usage cache family reads as Arabic developer speech instead of a literal calque, and two labels were rephrased.",
+  "chat#message.turnUsage.cacheHit": "إصابة الكاش",
+  "chat#message.turnUsage.cacheRead": "إدخال من الكاش",
+  "chat#message.turnUsage.cacheWrite": "كتابة في الكاش",
+  "chat#message.turnUsage.input": "إدخال غير مخزّن",
+  "conversation#detail.days": "{count} يوم",
+  "conversation#ask.reopen": "الإجابة"
 }
