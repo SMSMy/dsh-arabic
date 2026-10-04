@@ -1,0 +1,54 @@
+name: Publish
+
+# Publishes to npm through trusted publishing (OIDC): no token, no OTP, and the
+# release carries a provenance attestation linking the tarball to this commit.
+#
+# One-time setup on npmjs.com (package → Settings → Trusted Publisher):
+#   publisher : GitHub Actions
+#   repository: SMSMy/dsh-arabic
+#   workflow   : publish.yml
+# Do this only after the first manual publish - npm has no "pending" publisher
+# for a package that does not exist yet.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  id-token: write # required for OIDC
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false # never cache in release builds
+
+      - name: Use the latest npm (trusted publishing needs a recent CLI)
+        run: npm install -g npm@latest
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Gate - the Arabic pack must be complete and self-consistent
+        run: |
+          node scripts/build-client.mjs --check
+          node scripts/lint-consistency.mjs --strict
+
+      - name: Gate - behaviour and contract tests
+        run: npm test
+
+      - name: Gate - the committed browser half must match the source
+        run: |
+          node scripts/build-client.mjs
+          git diff --exit-code lib/client.js
+
+      - name: Publish with provenance
+        run: npm publish --access public --provenance
