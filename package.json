@@ -1,0 +1,53 @@
+{
+  "name": "dsh-arabic",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Arabic experience for DeepSeek Harness: bidi-safe RTL rendering for mixed Arabic/English content plus a full Arabic UI language pack registered through the official locale service.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "locales",
+    "cordis.patch.yml",
+    "README.md",
+    "README.ar.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "arabic",
+    "rtl",
+    "bidi",
+    "localization",
+    "i18n"
+  ],
+  "scripts": {
+    "build": "node scripts/build-client.mjs",
+    "test": "node tests/verify-rtl.mjs && node tests/verify-locales.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SMSMy/dsh-arabic.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SMSMy/dsh-arabic/issues"
+  },
+  "homepage": "https://github.com/SMSMy/dsh-arabic#readme"
+}

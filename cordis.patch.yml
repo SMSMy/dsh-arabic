@@ -1,0 +1,9 @@
+# dsh-arabic bundle patch — one host row that pushes the RTL/bidi injection rows
+# into the Web/Desktop index and carries the client half (lib/client.js) which
+# registers the Arabic language pack through the official locale service.
+#
+# The row name resolves from the profile's own node_modules, where
+# `dsh plugin --profile <profile> add dsh-arabic` (or `add link:<dir>`) installed it.
+- insert:
+    - id: dsh-arabic
+      name: dsh-arabic

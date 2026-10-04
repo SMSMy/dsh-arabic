@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Validate the Arabic catalog against the official key set
+        run: node scripts/build-client.mjs --check
+
+      - name: Rebuild the browser half and confirm it is current
+        run: |
+          node scripts/build-client.mjs
+          git diff --exit-code lib/client.js
+
+      - name: Locale pack contract + registration tests
+        run: node tests/verify-locales.mjs
+
+      - name: Bidi/RTL behaviour tests
+        run: node tests/verify-rtl.mjs
