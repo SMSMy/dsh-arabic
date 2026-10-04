@@ -40,7 +40,10 @@
   ],
   "scripts": {
     "build": "node scripts/build-client.mjs",
-    "test": "node tests/verify-rtl.mjs && node tests/verify-locales.mjs"
+    "test": "node tests/verify-rtl.mjs && node tests/verify-locales.mjs",
+    "extract": "node scripts/extract-catalog.mjs",
+    "assemble": "node scripts/assemble-translations.mjs --from translations",
+    "lint": "node scripts/lint-consistency.mjs --strict"
   },
   "repository": {
     "type": "git",
@@ -49,5 +52,8 @@
   "bugs": {
     "url": "https://github.com/SMSMy/dsh-arabic/issues"
   },
-  "homepage": "https://github.com/SMSMy/dsh-arabic#readme"
+  "homepage": "https://github.com/SMSMy/dsh-arabic#readme",
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
 }

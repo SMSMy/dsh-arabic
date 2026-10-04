@@ -1,4 +1,5 @@
 node_modules/
+.cache/
 _recon/
 *.log
 .DS_Store

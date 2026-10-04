@@ -105,9 +105,11 @@ a future slot change can never take the language pack down with it.
 | `locales/ar.json` | the translated dictionaries |
 | `data/en-catalog.json` | official English key set extracted from the DSH sources |
 | `data/overrides.json` | pinned wording where parallel batches disagreed |
+| `scripts/extract-catalog.mjs` | regenerates `data/en-catalog.json` from the official upstream sources (`npm run extract`) |
 | `scripts/build-client.mjs` | validates the pack and regenerates `lib/client.js` (`--check` for CI) |
 | `scripts/assemble-translations.mjs` | merges translation batches into `locales/ar.json` |
 | `scripts/lint-consistency.mjs` | reports the same English string translated two ways |
+| `CONTRIBUTING.md` | how to add or fix a translation, and the checks CI runs |
 | `tests/verify-rtl.mjs` | 12 behavioural checks of the bidi layer on a DOM shim |
 | `tests/verify-locales.mjs` | catalog integrity, artifact contract and registration checks |
 
@@ -119,6 +121,19 @@ npm run build                # regenerate lib/client.js
 node scripts/build-client.mjs --check    # fail if the pack is incomplete
 node scripts/lint-consistency.mjs --strict
 ```
+
+### Keeping up with upstream
+
+The key set is extracted, not hand-maintained:
+
+```bash
+GITHUB_TOKEN=$(gh auth token) npm run extract   # refresh data/en-catalog.json
+node scripts/build-client.mjs --check           # list every untranslated key
+```
+
+The diff of `data/en-catalog.json` is exactly the new translation worklist, and
+keys that are still missing fall back to English at runtime — so a partial
+update never breaks the interface. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Compatibility
 

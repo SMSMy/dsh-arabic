@@ -103,9 +103,11 @@ lib/client.js                النصف البرمجي في المتصفح (مُ
 | `locales/ar.json` | القواميس المترجمة |
 | `data/en-catalog.json` | مجموعة المفاتيح الإنجليزية الرسمية المستخرجة من مصادر DSH |
 | `data/overrides.json` | توحيد الصيغ حيث اختلفت الدفعات المتوازية |
+| `scripts/extract-catalog.mjs` | يعيد توليد `data/en-catalog.json` من المصادر الرسمية (`npm run extract`) |
 | `scripts/build-client.mjs` | يتحقق من الحزمة ويعيد توليد `lib/client.js` (`--check` لـ CI) |
 | `scripts/assemble-translations.mjs` | يدمج دفعات الترجمة في `locales/ar.json` |
 | `scripts/lint-consistency.mjs` | يكشف ترجمة النص الإنجليزي الواحد بصيغتين |
+| `CONTRIBUTING.md` | كيف تضيف ترجمة أو تصلحها، والفحوص التي يشغّلها CI |
 | `tests/verify-rtl.mjs` | 12 اختباراً سلوكياً لطبقة الاتجاه على محاكي DOM |
 | `tests/verify-locales.mjs` | سلامة الكتالوج وعقد الملف وتسجيل اللغة |
 
@@ -117,6 +119,19 @@ npm run build                             # إعادة توليد lib/client.js
 node scripts/build-client.mjs --check     # يفشل إن كانت الحزمة ناقصة
 node scripts/lint-consistency.mjs --strict
 ```
+
+### مواكبة التحديثات الرسمية
+
+مجموعة المفاتيح **مُستخرَجة لا مكتوبة يدوياً**:
+
+```bash
+GITHUB_TOKEN=$(gh auth token) npm run extract   # تحديث data/en-catalog.json
+node scripts/build-client.mjs --check           # سرد كل مفتاح غير مترجم
+```
+
+الفرق في `data/en-catalog.json` هو قائمة عمل الترجمة الجديدة بالضبط، والمفاتيح
+الناقصة تعود للإنجليزية وقت التشغيل — فتحديث جزئي لا يكسر الواجهة أبداً.
+انظر [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## التوافق
 
