@@ -42,6 +42,7 @@ class FakeNode {
 
   getAttribute(name) { return this.attributes.has(name) ? this.attributes.get(name) : null }
   setAttribute(name, value) { this.attributes.set(name, String(value)) }
+  removeAttribute(name) { this.attributes.delete(name) }
 
   closest(selector) {
     const parts = selector.split(',').map((s) => s.trim().toLowerCase())
@@ -79,9 +80,17 @@ const document = {
     return found
   },
   querySelectorAll: (selector) => {
-    const tags = selector.split(',').map((s) => s.trim().toUpperCase())
+    const parts = selector.split(',').map((s) => s.trim())
     const out = []
-    walkAll(document.body, (n) => { if (n.nodeType === 1 && tags.includes(n.tagName)) out.push(n) })
+    walkAll(document.body, (n) => {
+      if (n.nodeType !== 1) return
+      for (const part of parts) {
+        const attr = part.match(/^\[([^\]=\]]+)\]$/)
+        if (attr) {
+          if (n.attributes.has(attr[1])) { out.push(n); return }
+        } else if (n.tagName === part.toUpperCase()) { out.push(n); return }
+      }
+    })
     return out
   },
   createTreeWalker: (root) => {
@@ -99,7 +108,17 @@ class MutationObserver {
 }
 MutationObserver.instances = []
 
-globalThis.window = {}
+const store = new Map()
+globalThis.window = {
+  localStorage: {
+    getItem: (key) => (store.has(key) ? store.get(key) : null),
+    setItem: (key, value) => { store.set(key, String(value)) }
+  },
+  dispatchEvent: () => {}
+}
+globalThis.CustomEvent = class CustomEvent {
+  constructor(type, init) { this.type = type; this.detail = init && init.detail }
+}
 globalThis.document = document
 globalThis.NodeFilter = { SHOW_TEXT: 4 }
 globalThis.MutationObserver = MutationObserver
@@ -199,6 +218,34 @@ if (inputHandler) {
   check('composer flips back to auto for English', composer.getAttribute('dir') === 'auto', `dir=${composer.getAttribute('dir')}`)
 } else {
   check('composer flips back to auto for English', false, 'no input listener')
+}
+
+/* ------------------------------------------- the settings-row control face --- */
+
+check('layer exposes a control face on window', !!window.__dshArabic && typeof window.__dshArabic.setEnabled === 'function')
+check('layer starts enabled', !!(window.__dshArabic && window.__dshArabic.isEnabled()))
+
+if (window.__dshArabic) {
+  window.__dshArabic.setEnabled(false)
+  check('disabling clears existing marks', document.body.getAttribute(MARK) === null && arabicPara.getAttribute(MARK) === null)
+  check('disabling restores composer direction', composer.getAttribute('dir') === null, `dir=${composer.getAttribute('dir')}`)
+  check('disabling is persisted', store.get('dsh-arabic:rtl') === 'off')
+
+  const whileOff = el('div')
+  const pOff = el('p')
+  pOff.appendChild(text('نص عربي بعد الإيقاف'))
+  whileOff.appendChild(pOff)
+  document.body.appendChild(whileOff)
+  if (observer) {
+    observer.callback([{ type: 'childList', addedNodes: [whileOff] }])
+    await new Promise((resolve) => setTimeout(resolve, 120))
+  }
+  check('no marking while disabled', whileOff.getAttribute(MARK) === null && pOff.getAttribute(MARK) === null)
+
+  window.__dshArabic.setEnabled(true)
+  check('enabling re-marks existing content', arabicPara.getAttribute(MARK) === '1')
+  check('enabling re-marks content added while off', whileOff.getAttribute(MARK) === '1' || pOff.getAttribute(MARK) === '1')
+  check('enabling is persisted', store.get('dsh-arabic:rtl') === 'on')
 }
 
 let failed = 0

@@ -70,6 +70,7 @@ input[dir="auto"],
 function dshArabicClient() {
   var MARK = 'data-dsh-arabic-bidi'
   var STYLE_ID = 'dsh-arabic-style'
+  var STORE_KEY = 'dsh-arabic:rtl'
   var INSTALL_FLAG = '__dshArabicInstalled'
   // Strong-RTL characters: Arabic, Arabic Supplement/Extended, presentation
   // forms, Hebrew, Syriac, Thaana, NKo.
@@ -83,6 +84,9 @@ function dshArabicClient() {
   try {
     if (window[INSTALL_FLAG]) return
     window[INSTALL_FLAG] = true
+
+    var enabled = true
+    try { enabled = window.localStorage.getItem(STORE_KEY) !== 'off' } catch (err) {}
 
     function ensureStyle() {
       if (document.getElementById(STYLE_ID)) return
@@ -110,7 +114,7 @@ function dshArabicClient() {
     }
 
     function markSubtree(root) {
-      if (!root) return
+      if (!enabled || !root) return
       if (root.nodeType === 1) {
         if (SKIP_TAGS[root.tagName] || isBlocked(root)) return
       } else if (root.nodeType !== 3 && root.nodeType !== 9 && root.nodeType !== 11) {
@@ -135,6 +139,20 @@ function dshArabicClient() {
       if (el.getAttribute('dir') !== dir) el.setAttribute('dir', dir)
     }
 
+    function allInputs() {
+      var out = []
+      try { out = document.querySelectorAll('textarea,input,[contenteditable]') } catch (err) { out = [] }
+      return out
+    }
+
+    function unmarkAll() {
+      var marked = []
+      try { marked = document.querySelectorAll('[' + MARK + ']') } catch (err) { marked = [] }
+      for (var i = 0; i < marked.length; i++) {
+        try { marked[i].removeAttribute(MARK) } catch (err) {}
+      }
+    }
+
     var queue = []
     var timer = null
 
@@ -142,33 +160,63 @@ function dshArabicClient() {
       timer = null
       var items = queue.slice()
       queue.length = 0
+      if (!enabled) return
       for (var i = 0; i < items.length; i++) {
         try { markSubtree(items[i]) } catch (err) {}
       }
     }
 
     function schedule(node) {
-      if (!node) return
+      if (!enabled || !node) return
       if (queue.length > 500) return
       queue.push(node)
       if (timer !== null) return
       timer = setTimeout(flush, 60)
     }
 
+    /** Apply or fully revert the layer, and remember the choice. */
+    function setEnabled(next) {
+      enabled = !!next
+      try { window.localStorage.setItem(STORE_KEY, enabled ? 'on' : 'off') } catch (err) {}
+      if (enabled) {
+        try { markSubtree(document.body) } catch (err) {}
+        for (var i = 0; i < allInputs().length; i++) syncInput(allInputs()[i])
+      } else {
+        queue.length = 0
+        unmarkAll()
+        var inputs = allInputs()
+        for (var j = 0; j < inputs.length; j++) {
+          try {
+            if (inputs[j].getAttribute('dir') === 'rtl' || inputs[j].getAttribute('dir') === 'auto') {
+              inputs[j].removeAttribute('dir')
+            }
+          } catch (err) {}
+        }
+      }
+      try {
+        window.dispatchEvent(new CustomEvent('dsh-arabic:change', { detail: { enabled: enabled } }))
+      } catch (err) {}
+      return enabled
+    }
+
     function boot() {
       ensureStyle()
-      try { markSubtree(document.body) } catch (err) {}
-      var inputs = document.querySelectorAll('textarea,input,[contenteditable]')
-      for (var i = 0; i < inputs.length; i++) syncInput(inputs[i])
+      if (enabled) {
+        try { markSubtree(document.body) } catch (err) {}
+        var inputs = allInputs()
+        for (var i = 0; i < inputs.length; i++) syncInput(inputs[i])
+      }
 
       document.addEventListener('input', function (event) {
         var target = event.target
-        if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.isContentEditable)) {
+        if (!enabled || !target) return
+        if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.isContentEditable) {
           syncInput(target)
         }
       }, true)
 
       var observer = new MutationObserver(function (records) {
+        if (!enabled) return
         for (var r = 0; r < records.length; r++) {
           var record = records[r]
           if (record.type === 'childList') {
@@ -179,6 +227,14 @@ function dshArabicClient() {
         }
       })
       observer.observe(document.body, { childList: true, subtree: true, characterData: true })
+    }
+
+    // Public face, used by this plugin's own settings row (and by anyone who
+    // wants to script the layer). Kept tiny on purpose.
+    window.__dshArabic = {
+      isEnabled: function () { return enabled },
+      setEnabled: setEnabled,
+      toggle: function () { return setEnabled(!enabled) }
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot)

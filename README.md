@@ -44,6 +44,20 @@ Coverage and every non-obvious translation decision are auditable in
 [`locales/ar.json`](locales/ar.json) (the Arabic pack) and
 [`data/overrides.json`](data/overrides.json) (cross-batch consistency fixes).
 
+### 3. Your choice, not ours
+
+Arabic is **added as an option, never forced**:
+
+- **Settings → General → Language** lists **العربية** next to the built-in
+  languages; the selection is stored by the app's own locale service, so a
+  reader who prefers the English interface keeps it.
+- **Settings → General → Right-to-left text direction** switches the bidi layer
+  off and on instantly and remembers the choice (`localStorage`). With it off,
+  no block is marked and no composer direction is set — the UI behaves exactly
+  as it would without the plugin.
+
+Nothing about the interface changes until you choose it.
+
 ## Install
 
 ```bash
@@ -72,14 +86,15 @@ index.js                     host half
 
 lib/client.js                browser half (generated)
   └── window.__ModuleLoader__.load({ id, factory })
-        └── ctx.locale.addLanguage({ id: 'ar', label: 'العربية', fallback: 'en' })
-            ctx.locale.register(namespace, 'ar', dictionary)   × 59
+        ├── ctx.locale.addLanguage({ id: 'ar', label: 'العربية', fallback: 'en' })
+        │   ctx.locale.register(namespace, 'ar', dictionary)   × 59
+        └── ctx.slots.inject('settings.general.item', …)
+            └── one Switch row → window.__dshArabic.setEnabled()
 ```
 
-The browser half deliberately has **zero externals** — it only touches the
-`locale` service, so it needs no bundler, no React and no module-table
-registration. `scripts/build-client.mjs` generates it from
-`locales/ar.json`.
+The browser half has **no top-level externals**: `react` and the primitives are
+required only when the settings seat exists, and that registration is guarded so
+a future slot change can never take the language pack down with it.
 
 ## Repository layout
 
