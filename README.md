@@ -47,6 +47,12 @@ The three rules behind the table:
    the text is clearly Latin (twice as many Latin words), so a growing answer
    cannot flicker between directions.
 
+**Only text blocks are flipped — chrome never is.** A flex or grid container
+reorders its children when it flips, and a row that owns buttons is a toolbar:
+both are excluded, so the composer's send button keeps its side even though the
+Arabic permission label sits in that same row. The Arabic text inside such a row
+lives in its own block and is still handled.
+
 If a block's direction is set by the app or by you (`dir="ltr"` in the markup),
 this layer never touches it: that is the escape hatch for any block the estimator
 gets wrong.
@@ -65,7 +71,10 @@ gets wrong.
   Where it matters, the copy is phrased to be number-agnostic.
 - **Chrome stays LTR.** Menus and the sidebar follow the shell's direction, not
   the selected language: flipping them by injection breaks a layout authored with
-  physical CSS. See [docs/roadmap.md](docs/roadmap.md) for the upstream-first plan.
+  physical CSS. Flex/grid containers and rows owning controls are excluded from
+  the direction decision for the same reason — an Arabic label inside the
+  composer's toolbar reads right-to-left without moving the send button. See
+  [docs/roadmap.md](docs/roadmap.md) for the upstream-first plan.
 
 > The word-dominance approach, the "one identifier is one word" rule and the
 > idea of stripping code-like tokens before counting follow the community

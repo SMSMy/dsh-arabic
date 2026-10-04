@@ -94,6 +94,13 @@ function dshArabicClient() {
   /** Containers judged on their whole subtree: a list only moves its markers
    *  when the list itself flips, and a table only reorders when it flips. */
   var CONTAINER = { TABLE: 1, UL: 1, OL: 1, DL: 1 }
+  /**
+   * Interactive chrome. A row that owns controls is a toolbar, not prose:
+   * flipping it reverses its children and moves the send button to the wrong
+   * side. The composer's control row carries an Arabic permission label, so this
+   * is not a hypothetical case.
+   */
+  var INTERACTIVE = 'button,select,[role="button"],[role="combobox"],[role="menuitem"],[role="tab"],[role="switch"],[role="checkbox"]'
   var SKIP_SELECTOR = 'pre,code,kbd,samp,var,tt,script,style,noscript,template,input,textarea,select,option,svg,path,canvas,img,video,audio'
 
   try {
@@ -224,12 +231,25 @@ function dshArabicClient() {
       return false
     }
 
+    /**
+     * Only text blocks are direction candidates.
+     *
+     * Chrome is excluded on purpose (see docs/roadmap.md, "chrome vs content"):
+     * a flex or grid container reorders its children when it flips, and a row
+     * that owns buttons is a toolbar. The Arabic text inside those rows is still
+     * handled — it lives in its own block element, which remains a candidate —
+     * so an Arabic permission label reads correctly without moving the
+     * composer's send button to the other side.
+     */
     function isBlockCandidate(el) {
       if (!el || el.nodeType !== 1 || SKIP[el.tagName]) return false
       if (CONTAINER[el.tagName]) return true
       var display = ''
       try { display = getComputedStyle(el).display || '' } catch (err) { display = '' }
-      return !!display && display.indexOf('inline') !== 0
+      if (!display || display.indexOf('inline') === 0) return false
+      if (display === 'flex' || display === 'grid') return false
+      if (el.querySelector && el.querySelector(INTERACTIVE)) return false
+      return true
     }
 
     /** Nearest block (or container) ancestor, starting at the node itself. */

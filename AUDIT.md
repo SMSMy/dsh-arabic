@@ -75,6 +75,7 @@ result (it must reproduce the committed catalog exactly):
 | 0.1.0 | `unicode-bidi: plaintext` (`dir="auto"`) | shipped, then reviewed: this is the first-strong rule (UAX #9 P2/P3) and a developer's line usually starts with a Latin token |
 | 0.1.1 | word dominance, one identifier = one word, tie → RTL, hysteresis absent | fixed `Hello كيف حالك`, `Error: …`, `npm install ثم …`; tests went 12 → 34 |
 | 0.2.0 | code-like tokens do not vote **and bind the Latin words around them**; hysteresis for streaming; `direction` + `isolate` declared in CSS | fixed `شغّل npx @deepseek-ai/dsh web`; added the 25-case golden matrix |
+| 0.2.1 | **chrome is excluded from the decision**: flex/grid containers and rows owning interactive controls are never flipped | reported from real use — an Arabic permission label in the composer's toolbar flipped the row and moved the send button to the other side; tests went 34 → 37 |
 
 Two outside reviews drove 0.1.1 and 0.2.0. Every claim in them was verified before
 being acted on — including one that did **not** hold: the Hebrew plugin's

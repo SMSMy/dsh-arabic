@@ -62,6 +62,22 @@ class FakeNode {
     }
     return null
   }
+
+  /** First matching descendant — enough for the selectors this layer uses. */
+  querySelector(selector) {
+    const parts = selector.split(',').map((s) => s.trim())
+    let found = null
+    walkAll(this, (n) => {
+      if (found || n === this || n.nodeType !== 1) return
+      for (const part of parts) {
+        const attr = part.match(/^\[([^\]=\]]+)(?:="([^"]*)")?\]$/)
+        if (attr) {
+          if (n.attributes.has(attr[1]) && (attr[2] === undefined || n.attributes.get(attr[1]) === attr[2])) { found = n; return }
+        } else if (n.tagName === part.toUpperCase()) { found = n; return }
+      }
+    })
+    return found
+  }
 }
 
 const el = (tag) => new FakeNode(1, tag)
@@ -204,6 +220,35 @@ const composer = el('textarea')
 composer.value = 'اكتب هنا بالعربية'
 document.body.appendChild(composer)
 
+// The composer's control row: a flex toolbar whose Arabic permission label must
+// NOT flip the row, or the send button swaps sides. This is the reported bug.
+const toolbar = el('div')
+toolbar.display = 'flex'
+const toolbarLabel = el('span')
+toolbarLabel.display = 'inline'
+toolbarLabel.appendChild(text('وصول كامل'))
+const toolbarSend = el('button')
+toolbarSend.appendChild(text('↑'))
+const toolbarModel = el('span')
+toolbarModel.display = 'inline'
+toolbarModel.appendChild(text('DeepSeek-V41-Flash'))
+toolbar.appendChild(toolbarLabel)
+toolbar.appendChild(toolbarSend)
+toolbar.appendChild(toolbarModel)
+document.body.appendChild(toolbar)
+
+// A block row that owns a control is chrome too, but the prose block inside it is
+// still a direction candidate.
+const cardRow = el('div')
+cardRow.display = 'block'
+const cardText = el('p')
+cardText.appendChild(text('رسالة عربية داخل بطاقة فيها زر'))
+const cardButton = el('button')
+cardButton.appendChild(text('Copy'))
+cardRow.appendChild(cardText)
+cardRow.appendChild(cardButton)
+document.body.appendChild(cardRow)
+
 /* ------------------------------------------------------------------- run --- */
 
 const { default: plugin } = await import('../index.js')
@@ -250,6 +295,12 @@ check(
 )
 check('an inline wrapper walks up to its block host', rtl(spanHost))
 check('composer switches to rtl for Arabic', composer.getAttribute('dir') === 'rtl', `dir=${composer.getAttribute('dir')}`)
+
+// Chrome must not flip: the toolbar keeps its order, a row owning a button is
+// left alone, and the prose block inside such a row is still given RTL.
+check('a flex toolbar is never flipped', untouched(toolbar), `dir=${toolbar.getAttribute('dir')}`)
+check('a row owning a button is never flipped', cardRow.getAttribute('dir') === null && cardRow.getAttribute(MARK) === null, `dir=${cardRow.getAttribute('dir')}`)
+check('the prose block inside such a row is still flipped', rtl(cardText), `dir=${cardText.getAttribute('dir')}`)
 
 check('style element injected', document.getElementById('dsh-arabic-style') !== null)
 check('CSS keeps code LTR', styleRow.text.includes('direction: ltr'))
