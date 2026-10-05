@@ -3,6 +3,26 @@
 Every release below is published to npm through trusted publishing (OIDC) with a
 provenance attestation, and every one carries the suite results it was cut from.
 
+## 0.3.0
+
+The performance pass, measured before it was written.
+
+- **one walk per block**: `blockInfo()` answers both questions — the text to weigh
+  and whether the block holds Arabic — where two functions walked every subtree
+  twice;
+- **pass-scoped caches** for the computed display and for the interactive-control
+  query. They are created at the top of a pass and dropped at the end, so nothing
+  can go stale when a class change turns a block into a flex row between passes;
+- **inline-by-default tags are walked past without a style read**: a page of prose
+  is mostly spans inside blocks, and each read is a reflow in a browser;
+- `scan()` uses a `Set` instead of a linear `indexOf` over blocks;
+- `LATIN_CHAR` uses `\p{Script=Latin}` instead of a hand-written range.
+
+Measured with `node tests/verify-rtl.mjs --bench` over 2,000 elements: **style
+reads 3,546 → 2,027** (−43%). Wall time on the offline shim is unchanged and that
+is expected — the shim's style read costs nothing, which is exactly why the count,
+not the shim's clock, is the number that matters.
+
 ## 0.2.9
 
 - **what counts as a code token is narrower and now pinned**: a separator only
