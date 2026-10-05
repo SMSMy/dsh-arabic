@@ -34,6 +34,17 @@ const check = process.argv.includes('--check')
 const arabic = JSON.parse(readFileSync(AR_PATH, 'utf8'))
 const english = JSON.parse(readFileSync(EN_PATH, 'utf8'))
 
+/**
+ * Embed JSON in the generated script safely. A value containing `</script>`
+ * would close the tag the injection row lives in, and U+2028/U+2029 are line
+ * terminators in JavaScript even though they are legal inside a JSON string.
+ * The escapes are inert: they decode to the same characters at runtime.
+ */
+const safeJson = (value) => JSON.stringify(value)
+  .replace(/</g, '\\u003c')
+  .replace(/\u2028/g, '\\u2028')
+  .replace(/\u2029/g, '\\u2029')
+
 /* ------------------------------------------------------------- validation --- */
 
 const problems = []
@@ -106,7 +117,7 @@ window.__ModuleLoader__.load({
     var LOCALE_ID = ${JSON.stringify(LOCALE_ID)};
     var LOCALE_LABEL = ${JSON.stringify(LOCALE_LABEL)};
     var ROW_ID = 'dsh-arabic';
-    var DICTS = ${JSON.stringify(arabic)};
+    var DICTS = ${safeJson(arabic)};
 
     /** True while the interface language is Arabic (drives the row's own copy). */
     function isArabicActive(ctx) {

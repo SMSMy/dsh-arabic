@@ -438,6 +438,40 @@ if (inputHandler) {
   composer.value = 'now english'
   inputHandler.handler({ target: composer })
   check('composer returns to auto for English', composer.getAttribute('dir') === 'auto', `dir=${composer.getAttribute('dir')}`)
+
+  // Hysteresis, exactly like the block path: a composer that is already RTL keeps
+  // its direction until the Latin side is clearly ahead, otherwise a mixed line
+  // makes it flicker on every keystroke.
+  composer.value = 'اكتب هنا بالعربية'
+  inputHandler.handler({ target: composer })
+  check('composer turns rtl for Arabic', composer.getAttribute('dir') === 'rtl', `dir=${composer.getAttribute('dir')}`)
+
+  composer.value = 'مرحبا بك npm install build'
+  inputHandler.handler({ target: composer })
+  check('composer keeps rtl while the Latin side is not clearly ahead', composer.getAttribute('dir') === 'rtl', `dir=${composer.getAttribute('dir')}`)
+
+  composer.value = 'this is now clearly english text with several latin words'
+  inputHandler.handler({ target: composer })
+  check('composer releases rtl once the text is clearly Latin', composer.getAttribute('dir') === 'auto', `dir=${composer.getAttribute('dir')}`)
+
+  // Only text-like fields take a direction: a checkbox, radio or hidden input has
+  // none of its own, and writing one can move the control itself.
+  const search = el('input')
+  search.setAttribute('type', 'search')
+  search.value = 'بحث بالعربية'
+  document.body.appendChild(search)
+  const checkbox = el('input')
+  checkbox.setAttribute('type', 'checkbox')
+  document.body.appendChild(checkbox)
+  const hidden = el('input')
+  hidden.setAttribute('type', 'hidden')
+  document.body.appendChild(hidden)
+  inputHandler.handler({ target: search })
+  inputHandler.handler({ target: checkbox })
+  inputHandler.handler({ target: hidden })
+  check('a search field follows the typed language', search.getAttribute('dir') === 'rtl', `dir=${search.getAttribute('dir')}`)
+  check('a checkbox is never given a direction', checkbox.getAttribute('dir') === null, `dir=${checkbox.getAttribute('dir')}`)
+  check('a hidden input is never given a direction', hidden.getAttribute('dir') === null, `dir=${hidden.getAttribute('dir')}`)
 } else {
   check('composer returns to auto for English', false, 'no input listener')
 }

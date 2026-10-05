@@ -26,7 +26,13 @@ const arabic = JSON.parse(readFileSync(arPath, 'utf8'))
 
 /** Technical strings that may legitimately stay Latin. */
 const TECHNICAL = /^[A-Za-z0-9 .,_:/#()\-+%·×*{}]+$/
-const hasArabic = (s) => /[\u0600-\u06FF]/.test(s)
+/**
+ * The same coverage the direction layer and the pack use: the Arabic block plus
+ * the supplement, the extended-A range (where the Persian and Urdu letters live)
+ * and the presentation forms. A narrower test would read an Arabic string as
+ * "no Arabic here" and skip exactly the strings that need checking.
+ */
+const hasArabic = (s) => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/.test(s)
 
 /* ----------------------------------------------- same English, same Arabic --- */
 

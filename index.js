@@ -9,9 +9,13 @@
  *     pack through the official locale service.
  *
  * The RTL layer deliberately does NOT flip the shell to RTL: developer UIs mix
- * Latin identifiers, paths and code with Arabic prose, so every paragraph
- * derives its own direction (`unicode-bidi: plaintext`, the CSS form of
- * `dir="auto"`), while code blocks stay LTR.
+ * Latin identifiers, paths and code with Arabic prose, so direction is decided
+ * per text block by prose dominance — code-like tokens do not vote and bind the
+ * Latin words around them, a tie resolves to Arabic, hysteresis keeps a streamed
+ * answer from flickering — and chrome surfaces (dialogs, menus, the shell) are
+ * never touched. Code blocks stay LTR. `unicode-bidi: plaintext` (the CSS form of
+ * `dir="auto"`, i.e. the first-strong rule) is deliberately NOT used: it gets a
+ * line wrong whenever it opens with a Latin token.
  *
  * Injection channel: `webserver/index-inject`. On the packaged Desktop app the
  * table is collected ONCE at host startup, so the rows are registered
@@ -377,14 +381,25 @@ function dshArabicClient() {
       if (el.getAttribute('dir') && !ours) return
       var value = el.isContentEditable ? el.textContent : el.value
       var text = String(value == null ? '' : value)
-      var want = isRtlDominant(text) ? 'rtl' : 'auto'
+      // Hysteresis, like the block path: a composer that is already RTL keeps its
+      // direction until the text is clearly Latin, otherwise typing mixed content
+      // makes it flicker on every keystroke.
+      var want = isRtlDominant(text, el.getAttribute('dir') === 'rtl') ? 'rtl' : 'auto'
       if (el.getAttribute('dir') !== want) el.setAttribute('dir', want)
       if (!ours) el.setAttribute(INPUT_MARK, '1')
     }
 
+    /** Text-like inputs only: a checkbox, radio, file or hidden input has no
+     *  direction of its own, and setting one can move its own control. */
+    var TEXT_INPUT = { text: 1, search: 1, url: 1, email: 1, tel: 1, password: 1, number: 1 }
+
     function editable(el) {
       if (!el || el.nodeType !== 1) return false
-      return el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable === true
+      if (el.isContentEditable === true) return true
+      if (el.tagName === 'TEXTAREA') return true
+      if (el.tagName !== 'INPUT') return false
+      var type = String((el.getAttribute && el.getAttribute('type')) || 'text').toLowerCase()
+      return TEXT_INPUT[type] === 1
     }
 
     function allEditable() {

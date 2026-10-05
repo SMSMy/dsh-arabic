@@ -119,10 +119,19 @@ const isStringDict = (value) =>
   value && typeof value === 'object' && !Array.isArray(value) &&
   Object.keys(value).length > 0 && Object.values(value).every((v) => typeof v === 'string')
 
+/**
+ * Evaluate an upstream dictionary in an empty sandbox.
+ *
+ * `runInThisContext` shares the extractor's global object, so upstream code could
+ * reach `process`, the environment and the filesystem. The bundle is only a
+ * dictionary, but it is still third-party code: give it a bare context with
+ * nothing but the three arguments it is called with.
+ */
 const runInVm = (code) => {
   const module = { exports: {} }
+  const sandbox = vm.createContext({})
   const factory = new vm.Script('(function (exports, module, require) {' + code + '\n})')
-  factory.runInThisContext()({}, module, (id) => { throw new Error('runtime import ' + id) })
+  factory.runInContext(sandbox)({}, module, (id) => { throw new Error('runtime import ' + id) })
   return module.exports
 }
 

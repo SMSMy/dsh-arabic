@@ -13,13 +13,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ['20', '22']
+        # 20 is the floor the plugin claims, 22 is the current LTS line, and 24 is
+        # what the release workflow publishes with — testing it here means a
+        # release cannot be the first place a Node 24 difference shows up.
+        node: ['20', '22', '24']
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+
+      - name: Install exact dependencies
+        run: npm ci
 
       - name: Validate the Arabic catalog against the official key set
         run: node scripts/build-client.mjs --check
@@ -28,6 +34,12 @@ jobs:
         run: |
           node scripts/build-client.mjs
           git diff --exit-code lib/client.js
+
+      - name: Cross-batch consistency lint
+        run: node scripts/lint-consistency.mjs --strict
+
+      - name: Documentation counts match the suites
+        run: node scripts/check-docs.mjs
 
       - name: Locale pack contract + registration tests
         run: node tests/verify-locales.mjs

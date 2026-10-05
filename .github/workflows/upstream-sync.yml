@@ -46,7 +46,7 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          branch="upstream-sync/$(date -u +%Y%m%d)"
+          branch="upstream-sync/$(date -u +%Y%m%d-%H%M%S)-${{ github.run_id }}"
           git checkout -b "$branch"
           git add data/
           git commit -m "chore(upstream): refresh the English key set"

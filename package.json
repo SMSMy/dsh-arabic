@@ -1,6 +1,6 @@
 {
   "name": "dsh-arabic",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "private": false,
   "description": "Arabic experience for DeepSeek Harness: bidi-safe RTL rendering for mixed Arabic/English content plus a full Arabic UI language pack registered through the official locale service.",
   "type": "module",
@@ -45,7 +45,11 @@
     "assemble": "node scripts/assemble-translations.mjs --from translations",
     "lint": "node scripts/lint-consistency.mjs --strict",
     "status": "node scripts/status.mjs",
-    "check": "node scripts/build-client.mjs --check && node scripts/lint-consistency.mjs --strict && node tests/golden-direction.mjs"
+    "docs": "node scripts/check-docs.mjs",
+    "check": "node scripts/build-client.mjs --check && node scripts/lint-consistency.mjs --strict && node scripts/check-docs.mjs && npm test"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "repository": {
     "type": "git",

@@ -178,15 +178,19 @@ a future slot change can never take the language pack down with it.
 | `scripts/lint-consistency.mjs` | reports the same English string translated two ways |
 | `tests/golden-direction.mjs` | 25 golden strings with the direction each must get |
 | `docs/roadmap.md` | the three layers, the upstream asks, and the deliberate non-goals |
+| `docs/status-bidi.html` · `docs/status-final.html` | how the live status line is spelled and why, rendered in both paragraph directions |
+| `docs/shimmer-compare.html` | the activity light frozen at one instant, English next to Arabic |
+| `CHANGELOG.md` | what changed in each release, and which report drove it |
+| `scripts/check-docs.mjs` | fails when a count in the docs disagrees with the suites |
 | `AUDIT.md` | how the project was built: every step, command and gate result |
 | `CONTRIBUTING.md` | how to add or fix a translation, and the checks CI runs |
-| `tests/verify-rtl.mjs` | 12 behavioural checks of the bidi layer on a DOM shim |
+| `tests/verify-rtl.mjs` | 52 behavioural checks of the bidi layer on a DOM shim |
 | `tests/verify-locales.mjs` | catalog integrity, artifact contract and registration checks |
 
 ## Development
 
 ```bash
-npm test                     # direction (34) + locale (28) + golden matrix (25)
+npm test                     # direction (52) + locale (28) + golden matrix (25)
 npm run check                # completeness + consistency lint + golden matrix
 npm run build                # regenerate lib/client.js
 npm run status               # coverage against the recorded upstream revision

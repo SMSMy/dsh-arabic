@@ -64,7 +64,7 @@ they fall back to English — so a partial update never breaks the interface.
 ## Checks before a pull request
 
 ```bash
-npm test                                   # 21 bidi + 28 locale checks
+npm test                                   # 52 bidi + 28 locale + 25 golden checks
 node scripts/build-client.mjs --check      # catalog completeness + placeholders
 node scripts/lint-consistency.mjs --strict # same English translated two ways
 node scripts/assemble-translations.mjs --from translations

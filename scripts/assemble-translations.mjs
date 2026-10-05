@@ -124,15 +124,29 @@ if (existsSync(overridesPath)) {
 // decisions that a parallel batch can silently split (code, system prompt).
 const termMapPath = join(ROOT, 'data', 'term-map.json')
 let termsApplied = 0
+const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+/**
+ * Arabic LETTERS only — not the whole block. Punctuation (the Arabic comma
+ * U+060C, Arabic-Indic digits) sits inside \u0600-\u06FF, so a block-wide test
+ * refuses to match a term followed by «،» and silently skips it.
+ */
+const AR_LETTER = '[\\u0620-\\u064A\\u066E-\\u06D3\\u06D5\\u06EE-\\u06EF\\u06FA-\\u06FF\\u0750-\\u077F\\u08A0-\\u08FF\\uFB50-\\uFDFF\\uFE70-\\uFEFF]'
 if (existsSync(termMapPath)) {
   const { terms = [] } = JSON.parse(readFileSync(termMapPath, 'utf8'))
   for (const [from, to] of terms) {
+    // Arabic-aware boundaries. A blind split/join rewrites the term inside any
+    // longer word it happens to sit in, so a future compound would silently ship
+    // corrupted copy. The term now only matches as a word of its own; the list
+    // stays ordered longest-first, which is what makes الشيفرة win over شيفرة.
+    const pattern = new RegExp('(?<!' + AR_LETTER + ')' + escapeRegExp(from) + '(?!' + AR_LETTER + ')', 'g')
     for (const [ns, dict] of Object.entries(merged)) {
       for (const key of Object.keys(dict)) {
-        if (typeof dict[key] === 'string' && dict[key].includes(from)) {
-          dict[key] = dict[key].split(from).join(to)
+        if (typeof dict[key] === 'string' && pattern.test(dict[key])) {
+          pattern.lastIndex = 0
+          dict[key] = dict[key].replace(pattern, to)
           termsApplied++
         }
+        pattern.lastIndex = 0
       }
     }
   }
