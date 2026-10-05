@@ -42,5 +42,8 @@
   "chat#message.turnUsage.cacheWrite": "كتابة في الكاش",
   "chat#message.turnUsage.input": "إدخال غير مخزّن",
   "conversation#detail.days": "{count} يوم",
-  "conversation#ask.reopen": "الإجابة"
+  "conversation#ask.reopen": "الإجابة",
+
+  "_bidi_comment": "الحركة الحيّة: شريط الحالة يحدّث المدة كل ثانية، والمدة تُبنى من أجزاء (4 د 39 ث). في سطر عربي RTL كانت الأجزاء تُعاد ترتيبها فتظهر «ليست بنفس سلسلة الإنجليزية». العزل LRI/PDI (U+2066/U+2069) يثبّت ترتيب المدة كما أنتجها التطبيق، فتتحرك بنفس انتظام الإنجليزية.",
+  "chat#chat.deepDivingFor": "تعمّق لمدة \u2066{duration}\u2069 ···"
 }

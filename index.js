@@ -275,8 +275,20 @@ function dshArabicClient() {
      * wrong.
      */
     function reconcile(el) {
-      if (!enabled || !isBlockCandidate(el)) return
+      if (!enabled || !el || el.nodeType !== 1) return
       var ours = el.getAttribute(MARK) === '1'
+      if (!isBlockCandidate(el)) {
+        // The block stopped qualifying — it gained an interactive control (a
+        // switch, a checkbox, a button) or turned into a flex row. It is chrome
+        // now, so a mark we set earlier must be withdrawn: leaving it flips the
+        // row and misplaces the control's own layout (the reported broken
+        // toggle). A `dir` the app set is untouched, as always.
+        if (ours) {
+          el.removeAttribute(MARK)
+          el.removeAttribute('dir')
+        }
+        return
+      }
       if (el.getAttribute('dir') && !ours) return
       var want = isRtlDominant(blockText(el), ours)
       if (want && !ours) {

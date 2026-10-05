@@ -329,6 +329,33 @@ if (observer) {
   check('appended Arabic flips a growing block', rtl(growing.block), `dir=${growing.block.getAttribute('dir')}`)
 }
 
+// A row that is marked before its switch mounts must be released. React renders
+// the Arabic label first and the control second, so the mark is set while the row
+// still looks like prose; leaving it flips the row and misplaces the toggle —
+// the reported broken switch in Settings.
+const lateRow = el('div')
+lateRow.display = 'block'
+const lateLabel = el('span')
+lateLabel.display = 'inline'
+lateLabel.appendChild(text('رفع سجل الجلسة عند استخدام الموديل الرسمي'))
+lateRow.appendChild(lateLabel)
+document.body.appendChild(lateRow)
+if (observer) {
+  observer.callback([{ type: 'childList', addedNodes: [lateRow], target: document.body }])
+  await new Promise((resolve) => setTimeout(resolve, 120))
+  check('an Arabic settings row is marked while it is still prose', rtl(lateRow), `dir=${lateRow.getAttribute('dir')}`)
+
+  const lateSwitch = el('button')
+  lateSwitch.setAttribute('role', 'switch')
+  const lateThumb = el('span')
+  lateThumb.display = 'inline'
+  lateSwitch.appendChild(lateThumb)
+  lateRow.appendChild(lateSwitch)
+  observer.callback([{ type: 'childList', addedNodes: [lateSwitch], target: lateRow }])
+  await new Promise((resolve) => setTimeout(resolve, 120))
+  check('the mark is withdrawn once the row owns a control', untouched(lateRow), `dir=${lateRow.getAttribute('dir')}`)
+}
+
 // …and a block that becomes English-only again must be released.
 growing.node.nodeValue = 'Installing packages now'
 if (observer) {
