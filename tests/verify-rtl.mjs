@@ -144,7 +144,16 @@ globalThis.CustomEvent = class CustomEvent {
 globalThis.document = document
 globalThis.NodeFilter = { SHOW_TEXT: 4 }
 globalThis.MutationObserver = MutationObserver
-globalThis.getComputedStyle = (node) => ({ display: node.display })
+/**
+ * A counting stand-in for the real style resolver. Each `getComputedStyle` call
+ * is a style/reflow read in a browser, so the call count is the objective cost
+ * metric the benchmark reports; the shim's own implementation is free.
+ */
+globalThis.__shim = { computedStyleCalls: 0 }
+globalThis.getComputedStyle = (node) => {
+  globalThis.__shim.computedStyleCalls++
+  return { display: node.display }
+}
 
 /* ---------------------------------------------------------------- fixture --- */
 
@@ -506,4 +515,36 @@ for (const r of results) {
   console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.label}${r.extra ? `  (${r.extra})` : ''}`)
 }
 console.log(`\n${results.length - failed}/${results.length} direction checks passed — ${fileURLToPath(new URL('..', import.meta.url))}`)
+
+/* ------------------------------------------------------------------ bench --- */
+
+/**
+ * `node tests/verify-rtl.mjs --bench [blocks]` measures one full pass over a
+ * streamed page. `setEnabled(true)` scans the whole document synchronously, so
+ * the two numbers are comparable run to run: wall time on this machine, and —
+ * the one that matters in a browser — how many style reads the pass performs.
+ * A style read is a reflow, so the count is the honest cost.
+ */
+if (process.argv.includes('--bench')) {
+  const blocks = Number(process.argv[process.argv.indexOf('--bench') + 1]) || 1000
+  for (let i = 0; i < blocks; i++) {
+    const wrapper = el('div')
+    const para = el('p')
+    para.appendChild(text(i % 2 === 0 ? `فقرة عربية رقم ${i} فيها كلمات عربية للقياس` : `paragraph number ${i} with plain english words`))
+    const span = el('span')
+    span.display = 'inline'
+    span.appendChild(text(' وبعض الإضافة'))
+    para.appendChild(span)
+    wrapper.appendChild(para)
+    document.body.appendChild(wrapper)
+  }
+  window.__dshArabic.setEnabled(false)
+  globalThis.__shim.computedStyleCalls = 0
+  const started = performance.now()
+  window.__dshArabic.setEnabled(true)
+  const elapsed = performance.now() - started
+  const marked = document.querySelectorAll(`[${MARK}]`).length
+  console.log(`\nbench  blocks: ${blocks * 2} elements · marked: ${marked}`)
+  console.log(`bench  wall: ${elapsed.toFixed(1)} ms · style reads: ${globalThis.__shim.computedStyleCalls}`)
+}
 process.exit(failed === 0 ? 0 : 1)

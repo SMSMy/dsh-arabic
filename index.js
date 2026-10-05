@@ -107,7 +107,7 @@ function dshArabicClient() {
   // inside the Arabic blocks.
   var RTL_CHAR = /[\u0590-\u05FF\u0600-\u06FF\u0700-\u074F\u0750-\u077F\u0780-\u07BF\u07C0-\u07FF\u0800-\u083F\u08A0-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/
   /** Strong left-to-right letters, used only to weigh against RTL. */
-  var LATIN_CHAR = /[A-Za-z\u00C0-\u024F]/
+  var LATIN_CHAR = /\p{Script=Latin}/u
   /**
    * Word separator: whitespace only, deliberately not punctuation. Splitting on
    * non-letters breaks identifiers into their parts, so `@deepseek-ai/dsh` would
@@ -125,6 +125,17 @@ function dshArabicClient() {
   /** Containers judged on their whole subtree: a list only moves its markers
    *  when the list itself flips, and a table only reorders when it flips. */
   var CONTAINER = { TABLE: 1, UL: 1, OL: 1, DL: 1 }
+  /**
+   * Tags that are inline by default. Walking past them needs no style read, which
+   * is the difference between one reflow per element and one per paragraph: a page
+   * of prose is mostly spans inside blocks. If one of these is styled block after
+   * all, its nearest block ancestor takes the decision — the text is inside that
+   * ancestor either way, so the outcome is the same and nothing is mislaid.
+   */
+  var INLINEISH = {
+    SPAN: 1, A: 1, B: 1, I: 1, EM: 1, STRONG: 1, SMALL: 1, SUB: 1, SUP: 1, LABEL: 1,
+    ABBR: 1, CITE: 1, MARK: 1, U: 1, S: 1, BDI: 1, BDO: 1, TIME: 1, BR: 1, WBR: 1, Q: 1, DFN: 1
+  }
   /**
    * Interactive chrome. A row that owns controls is a toolbar, not prose:
    * flipping it reverses its children and moves the send button to the wrong
@@ -259,27 +270,58 @@ function dshArabicClient() {
       return counts.rtl >= counts.ltr
     }
 
-    /** Text of a block, ignoring anything inside a skipped element (code, inputs…). */
-    function blockText(el) {
+    /* ------------------------------------------------------------ pass cache ---
+     * One pass visits the same ancestors and the same blocks many times, and every
+     * style read is a reflow in a real browser. These caches live exactly one pass:
+     * created at the top, dropped at the end, so nothing can go stale when a class
+     * change turns a block into a flex row between passes.
+     */
+    var passCache = null
+
+    function beginPass() { passCache = { display: new Map(), interactive: new Map() } }
+    function endPass() { passCache = null }
+
+    function computedDisplay(el) {
+      if (passCache) {
+        var hit = passCache.display.get(el)
+        if (hit !== undefined) return hit
+      }
+      var value = ''
+      try { value = getComputedStyle(el).display || '' } catch (err) { value = '' }
+      if (passCache) passCache.display.set(el, value)
+      return value
+    }
+
+    function ownsInteractive(el) {
+      if (passCache) {
+        var hit = passCache.interactive.get(el)
+        if (hit !== undefined) return hit
+      }
+      var value = false
+      try { value = !!(el.querySelector && el.querySelector(INTERACTIVE)) } catch (err) { value = false }
+      if (passCache) passCache.interactive.set(el, value)
+      return value
+    }
+
+    /**
+     * A block's text and whether it carries Arabic, in one walk. The previous shape
+     * walked every subtree twice — once to weigh it, once to ask whether it held
+     * Arabic at all.
+     */
+    function blockInfo(el) {
       var out = ''
+      var hasRtl = false
       var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null)
       var node
       while ((node = walker.nextNode())) {
         var parent = node.parentElement
         if (parent && parent.closest && parent.closest(SKIP_SELECTOR)) continue
-        out += node.nodeValue || ''
+        var value = node.nodeValue || ''
+        if (!hasRtl && RTL_CHAR.test(value)) hasRtl = true
+        out += value
         out += ' '
       }
-      return out
-    }
-
-    function containsRtl(el) {
-      var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null)
-      var node
-      while ((node = walker.nextNode())) {
-        if (RTL_CHAR.test(node.nodeValue || '')) return true
-      }
-      return false
+      return { text: out, hasRtl: hasRtl }
     }
 
     /**
@@ -299,15 +341,15 @@ function dshArabicClient() {
      */
     function isBlockCandidate(el) {
       if (!el || el.nodeType !== 1 || SKIP[el.tagName]) return false
+      if (INLINEISH[el.tagName]) return false
       try {
         if (el.closest && el.closest(CHROME)) return false
       } catch (err) {}
       if (CONTAINER[el.tagName]) return true
-      var display = ''
-      try { display = getComputedStyle(el).display || '' } catch (err) { display = '' }
+      var display = computedDisplay(el)
       if (!display || display.indexOf('inline') === 0) return false
       if (display === 'flex' || display === 'grid') return false
-      if (el.querySelector && el.querySelector(INTERACTIVE)) return false
+      if (ownsInteractive(el)) return false
       return true
     }
 
@@ -318,9 +360,10 @@ function dshArabicClient() {
       while (el && el !== document.body && el !== document.documentElement) {
         if (SKIP[el.tagName]) { el = el.parentElement; continue }
         if (CONTAINER[el.tagName]) return el
+        // Inline-by-default tags need no style read to walk past.
+        if (INLINEISH[el.tagName]) { el = el.parentElement; continue }
         if (!fallback) {
-          var display = ''
-          try { display = getComputedStyle(el).display || '' } catch (err) { display = '' }
+          var display = computedDisplay(el)
           if (display && display.indexOf('inline') !== 0) fallback = el
         }
         el = el.parentElement
@@ -333,7 +376,7 @@ function dshArabicClient() {
      * is left alone: that is the opt-out for any block this estimator gets
      * wrong.
      */
-    function reconcile(el) {
+    function reconcile(el, info) {
       if (!enabled || !el || el.nodeType !== 1) return
       var ours = el.getAttribute(MARK) === '1'
       if (!isBlockCandidate(el)) {
@@ -349,7 +392,9 @@ function dshArabicClient() {
         return
       }
       if (el.getAttribute('dir') && !ours) return
-      var want = isRtlDominant(blockText(el), ours)
+      var facts = info || blockInfo(el)
+      // No Arabic anywhere in the block releases it without weighing the text.
+      var want = facts.hasRtl && isRtlDominant(facts.text, ours)
       if (want && !ours) {
         el.setAttribute(MARK, '1')
         el.setAttribute('dir', 'rtl')
@@ -368,15 +413,15 @@ function dshArabicClient() {
       }
       if (root.nodeType !== 1 && root.nodeType !== 9 && root.nodeType !== 11) return
       var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null)
-      var seen = []
+      var seen = new Set()
       var node
       while ((node = walker.nextNode())) {
         if (!RTL_CHAR.test(node.nodeValue || '')) continue
         var parent = node.parentElement
         if (!parent || (parent.closest && parent.closest(SKIP_SELECTOR))) continue
         var block = blockOf(parent)
-        if (!block || seen.indexOf(block) !== -1) continue
-        seen.push(block)
+        if (!block || seen.has(block)) continue
+        seen.add(block)
         reconcile(block)
       }
     }
@@ -455,34 +500,41 @@ function dshArabicClient() {
       var items = queue.slice()
       queue.length = 0
       var i
-      for (i = 0; i < forcedItems.length; i++) {
-        try {
-          var el = forcedItems[i]
-          if (!el || el.nodeType !== 1) continue
-          var block = blockOf(el)
-          if (block) reconcile(block)
-          if (containsRtl(el) === false) reconcile(el)
-          // A control can mount deeper than the block it belongs to (a dropdown
-          // inside a wrapper inside the row). A mark set before it arrived would
-          // stay and mirror the whole row, which is what made the settings panel
-          // look half-flipped — so re-check every marked ancestor too.
-          var up = el.parentElement
-          var guard = 0
-          while (up && guard++ < 40) {
-            if (up.getAttribute && up.getAttribute(MARK) === '1') reconcile(up)
-            up = up.parentElement
-          }
-        } catch (err) {}
-      }
-      for (i = 0; i < items.length; i++) {
-        try { scan(items[i]) } catch (err) {}
+      beginPass()
+      try {
+        for (i = 0; i < forcedItems.length; i++) {
+          try {
+            var el = forcedItems[i]
+            if (!el || el.nodeType !== 1) continue
+            var facts = blockInfo(el)
+            var block = blockOf(el)
+            if (block) reconcile(block, block === el ? facts : null)
+            if (!facts.hasRtl) reconcile(el, facts)
+            // A control can mount deeper than the block it belongs to (a dropdown
+            // inside a wrapper inside the row). A mark set before it arrived would
+            // stay and mirror the whole row, which is what made the settings panel
+            // look half-flipped — so re-check every marked ancestor too.
+            var up = el.parentElement
+            var guard = 0
+            while (up && guard++ < 40) {
+              if (up.getAttribute && up.getAttribute(MARK) === '1') reconcile(up)
+              up = up.parentElement
+            }
+          } catch (err) {}
+        }
+        for (i = 0; i < items.length; i++) {
+          try { scan(items[i]) } catch (err) {}
+        }
+      } finally {
+        endPass()
       }
     }
 
     function boot() {
       ensureStyle()
       if (enabled) {
-        try { scan(document.body) } catch (err) {}
+        beginPass()
+        try { scan(document.body) } catch (err) {} finally { endPass() }
         var inputs = allEditable()
         for (var i = 0; i < inputs.length; i++) syncInput(inputs[i])
       }
@@ -515,7 +567,8 @@ function dshArabicClient() {
       enabled = !!next
       try { window.localStorage.setItem(STORE_KEY, enabled ? 'on' : 'off') } catch (err) {}
       if (enabled) {
-        try { scan(document.body) } catch (err) {}
+        beginPass()
+        try { scan(document.body) } catch (err) {} finally { endPass() }
         var inputs = allEditable()
         for (var i = 0; i < inputs.length; i++) syncInput(inputs[i])
       } else {
