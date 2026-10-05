@@ -33,9 +33,7 @@ order, and every menu is English. No plugin in the catalog addresses either half
 **Submission requirements**
 
 - `package.json` declares `dsh.bundle` (`{ "bundle": { "patch": "./cordis.patch.yml" } }`) with `cordis.patch.yml` at the repository root.
-- Real working code, MIT licensed, published on npm as
-  [`dsh-arabic`](https://www.npmjs.com/package/dsh-arabic) — currently **0.2.3**,
-  published through trusted publishing (OIDC) with a provenance attestation.
+- Real working code, MIT licensed, published on npm as [dsh-arabic](https://www.npmjs.com/package/dsh-arabic) with a new release for every fixed defect, each one through trusted publishing (OIDC) with a provenance attestation.
 - Repository is more than a day old at the time of opening this PR.
 - No official `@deepseek-ai/*` package is declared as a dependency; the browser
   half touches only the `locale` service and the baseline primitives.
@@ -61,4 +59,5 @@ keys. Terminology is pinned in `data/glossary.yml` and enforced by
 `data/term-map.json`, so the same English string cannot ship two ways.
 
 **Category:** `ui` — it changes how the interface renders and speaks.
+
 
