@@ -69,12 +69,15 @@ gets wrong.
 - **Plural forms.** DSH's locale dictionaries are flat strings, so an Arabic
   sentence that counts things cannot pick the right form for 1, 2, 3–10, 11+.
   Where it matters, the copy is phrased to be number-agnostic.
-- **Chrome stays LTR.** Menus and the sidebar follow the shell's direction, not
-  the selected language: flipping them by injection breaks a layout authored with
-  physical CSS. Flex/grid containers and rows owning controls are excluded from
-  the direction decision for the same reason — an Arabic label inside the
-  composer's toolbar reads right-to-left without moving the send button. See
-  [docs/roadmap.md](docs/roadmap.md) for the upstream-first plan.
+- **Chrome stays LTR — by design, not by omission.** The shell (sidebar, menus,
+  settings, tab bars) keeps its authored order; only text blocks take a direction.
+  A row that owns a control is **never marked**, and a mark is withdrawn the
+  moment its subtree gains one — including when the control mounts a level deeper
+  than the row. So an Arabic settings label reads right-to-left inside its own
+  column while the switch stays exactly where the design put it. Mirroring the
+  shell would need the app's layout to be authored with logical CSS; until then a
+  half-mirrored panel reads as broken, which is why the direction decision is
+  restricted to content. See [docs/roadmap.md](docs/roadmap.md).
 
 > The word-dominance approach, the "one identifier is one word" rule and the
 > idea of stripping code-like tokens before counting follow the community
