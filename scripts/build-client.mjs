@@ -129,6 +129,22 @@ window.__ModuleLoader__.load({
       }
     }
 
+    /**
+     * Mirror the active locale onto \`<html data-dsh-arabic-locale>\`.
+     *
+     * The injected CSS gates the activity mirror on \`html:lang(ar)\`, which the app
+     * itself keeps in sync — the right semantic source. This attribute is the same
+     * gate owned by this plugin, so an upstream change to that internal cannot make
+     * the mirror disappear without a symptom; it is removed when Arabic is not
+     * active and when the plugin unloads, so nothing is left behind.
+     */
+    function syncLocaleGate(ctx) {
+      try {
+        if (isArabicActive(ctx)) document.documentElement.setAttribute('data-dsh-arabic-locale', 'ar');
+        else document.documentElement.removeAttribute('data-dsh-arabic-locale');
+      } catch (err) {}
+    }
+
     /** Settings → General → <row>. Optional surface, never required. */
     function registerSettingsRow(ctx) {
       if (!ctx || !ctx.slots || typeof ctx.slots.inject !== 'function') return false;
@@ -196,6 +212,18 @@ window.__ModuleLoader__.load({
     exports.inject = ['locale'];
 
     exports.apply = function (ctx) {
+      ctx.effect(function () {
+        syncLocaleGate(ctx);
+        var unsubscribe = null;
+        try {
+          unsubscribe = ctx.locale.subscribe(function () { syncLocaleGate(ctx); });
+        } catch (err) {}
+        return function () {
+          try { if (unsubscribe) unsubscribe(); } catch (err) {}
+          try { document.documentElement.removeAttribute('data-dsh-arabic-locale'); } catch (err) {}
+        };
+      }, 'dsh-arabic: locale gate for the activity mirror');
+
       ctx.effect(function () {
         var disposers = [];
         // The language must exist before its dictionaries are addressable, and

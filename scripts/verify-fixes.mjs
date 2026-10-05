@@ -139,6 +139,17 @@ const check = (id, claim, ok, evidence) => {
     'upstream-sync.yml: branch="upstream-sync/$(date -u +%Y%m%d-%H%M%S)-${{ github.run_id }}"')
 }
 
+/* 13 — the activity mirror names what the shipped build renders */
+{
+  const idx = read('index.js')
+  const shapes = ['[class*="_sweep_"]', '[class*="_highlight_"]', '[data-dsh-arabic-locale="ar"]'].filter((s) => !idx.includes(s))
+  check('13', 'the activity mirror matches the hashed class names the frontend renders',
+    shapes.length === 0,
+    shapes.length
+      ? `missing ${shapes.join(', ')} — the mirror would be dead in production`
+      : 'hashed stems plus a locale gate this plugin owns; data/shimmer-pins.json pins the names and scripts/check-shimmer-pins.mjs re-verifies them against an installed app')
+}
+
 /* governance extras */
 {
   const pkg = JSON.parse(read('package.json'))

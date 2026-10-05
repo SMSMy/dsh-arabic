@@ -12,11 +12,18 @@ npm version 0.1.1 --no-git-tag-version
 # gates: the pack must be complete and self-consistent
 node scripts/build-client.mjs --check
 node scripts/lint-consistency.mjs --strict
+node scripts/check-bidi-family.mjs
 npm test
 
 # the committed browser half must match its generator
 node scripts/build-client.mjs
 git diff --exit-code lib/client.js
+
+# the activity mirror aims at another package's DOM, and the frontend build
+# renames every class (data/shimmer-pins.json records the names it was verified
+# against) — re-verify against an installed app. This cannot run in CI, which has
+# no DSH install.
+node scripts/check-shimmer-pins.mjs "$LOCALAPPDATA/Programs/DeepSeek Harness/resources/app.asar"
 ```
 
 If upstream DSH added strings, translate them first:

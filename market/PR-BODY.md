@@ -38,15 +38,16 @@ order, and every menu is English. No plugin in the catalog addresses either half
 - No official `@deepseek-ai/*` package is declared as a dependency; the browser
   half touches only the `locale` service and the baseline primitives.
 
-**Verification (all green on 0.2.1)**
+**Verification (all green on 0.3.1)**
 
-- **52** bidi behaviour checks on a DOM shim — marking rules, code isolation,
+- **55** bidi behaviour checks on a DOM shim — marking rules, code isolation,
   composer direction, streamed content, disable/restore, and the chrome cases above.
 - **30** golden direction strings (`tests/golden-direction.mjs`): the direction
   each of them must get, including the two limits asserted on purpose.
-- **28** locale checks — catalog completeness against the official key set,
-  placeholder integrity, artifact contract, language registration, settings row.
-- CI runs the three suites plus a strict consistency lint on Node 20 and 22; the
+- **32** locale checks — catalog completeness against the official key set,
+  placeholder integrity, artifact contract, language registration, settings row,
+  and the locale gate the browser half writes for the activity mirror.
+- CI runs the three suites plus a strict consistency lint on Node 20, 22 and 24; the
   published tarball was re-downloaded, compared byte-for-byte with the build, and
   re-tested.
 

@@ -94,6 +94,16 @@ if (existsSync(clientPath)) {
       removeEventListener: () => {},
       dispatchEvent: () => {}
     },
+    // The locale gate is written to <html data-dsh-arabic-locale>, so the sandbox
+    // needs a document root to observe it.
+    document: {
+      documentElement: {
+        attrs: {},
+        setAttribute(k, v) { this.attrs[k] = v },
+        removeAttribute(k) { delete this.attrs[k] },
+        getAttribute(k) { return k in this.attrs ? this.attrs[k] : null }
+      }
+    },
     CustomEvent: class { constructor(type, init) { this.type = type; this.detail = init && init.detail } }
   }
   sandbox.window.window = sandbox.window
@@ -179,6 +189,19 @@ if (plugin) {
       check('toggling drives the page layer', false, 'no onChange')
     }
   }
+
+  // 3c. the locale gate: written for Arabic, removed otherwise, cleaned up on unload.
+  const gate = sandboxRef.document.documentElement
+  check('writes the locale gate while Arabic is active', gate.getAttribute('data-dsh-arabic-locale') === 'ar', String(gate.getAttribute('data-dsh-arabic-locale')))
+  const disposers = []
+  const englishFace = Object.assign({}, localeFace, { getSnapshot: () => ({ active: 'en', locales: [], revision: 1 }) })
+  if (typeof plugin.apply === 'function') plugin.apply({ effect: (fn) => { disposers.push(fn()) }, locale: englishFace })
+  check('removes the gate when the language is not Arabic', gate.getAttribute('data-dsh-arabic-locale') === null)
+  if (typeof plugin.apply === 'function') plugin.apply({ effect: (fn) => { disposers.push(fn()) }, locale: localeFace })
+  check('re-writes the gate when Arabic comes back', gate.getAttribute('data-dsh-arabic-locale') === 'ar')
+  let disposeThrew = false
+  try { for (const dispose of disposers) if (typeof dispose === 'function') dispose() } catch (err) { disposeThrew = true }
+  check('unloading removes the gate', !disposeThrew && gate.getAttribute('data-dsh-arabic-locale') === null)
 }
 
 /* ----------------------------------------------------------------- report --- */

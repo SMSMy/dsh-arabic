@@ -3,6 +3,33 @@
 Every release below is published to npm through trusted publishing (OIDC) with a
 provenance attestation, and every one carries the suite results it was cut from.
 
+## 0.3.1
+
+The activity light was mirrored in the stylesheet and never in the browser.
+
+- **the mirror reaches the DOM again.** The frontend build renames every CSS module
+  class, so the app's `.sweep` ships as `_sweep_1rdzk_34`: the selectors added in
+  0.2.7 matched nothing, and the light kept travelling left to right in Arabic. They
+  now take the hashed stem (`[class*="_sweep_"]`) as well as the plain class, and
+  `data/shimmer-pins.json` records the names this was verified against —
+  `scripts/check-shimmer-pins.mjs <app.asar>` fails, naming the difference, when a
+  build renames them, while `tests/verify-rtl.mjs` fails if the selector shape is
+  dropped;
+- **the locale gate has an owner.** `html:lang(ar)` depends on the app pointing
+  `<html lang>` at the active locale — it does, and that is the right source. The
+  browser half now also writes `data-dsh-arabic-locale` from the same snapshot and
+  removes it on unload, so a change on that internal cannot kill the mirror silently;
+- `docs/shimmer-compare.html` renders the class names the frontend ships. The old
+  figure compared two mock cells, so it would have shown a mirror that did not exist;
+  measured now: at a frozen instant the bright band covers 19–56% of the English line
+  and 46–82% of the Arabic one;
+- `prefers-reduced-motion` stays the app's: the mirror only renames an animation, so
+  the app's `animation: none` still owns duration and delay, and a test now forbids
+  this plugin from declaring timing of its own. Forced colours is handled neither
+  here nor upstream — the Arabic layers behave exactly as the English ones;
+- the live-status comment says the ellipsis keeps to the *logical* end (the right
+  inside an LTR isolate), which is what the isolate actually does.
+
 ## 0.3.0
 
 The performance pass, measured before it was written.

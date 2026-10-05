@@ -1,0 +1,36 @@
+{
+  "_comment": "What the activity mirror was verified against in the shipped app. The web frontend renames every CSS module class, so these names are the contract between this plugin and DSH: scripts/check-shimmer-pins.mjs reads them out of an installed app.asar and fails, naming the difference, when a build changes them. Run it before a release (see docs/releasing.md) — it is not in CI, which has no DSH install.",
+  "app": {
+    "package": "@deepseek-ai/dsh-web-frontend",
+    "version": "0.2.0-rc.2",
+    "verified": "2026-10-05",
+    "archive": "app.asar"
+  },
+  "source": {
+    "module": "@deepseek-ai/dsh-client-ui-primitives/lib/TextShimmer.module.css",
+    "layers": [".decoration", ".sweep", ".highlight"],
+    "mask": "linear-gradient(105deg",
+    "duration": "animation-duration: 1.5s",
+    "delay": "animation-delay: 0.3s",
+    "timing": "animation-timing-function: steps(48, end)"
+  },
+  "served": {
+    "dir": "@deepseek-ai/dsh-web-frontend/dist/assets/",
+    "css": "index-",
+    "js": "index-"
+  },
+  "classes": {
+    "sweep": "_sweep_1rdzk_34",
+    "highlight": "_highlight_1rdzk_54",
+    "decoration": "_decoration_1rdzk_25"
+  },
+  "keyframes": {
+    "sweep": "_dsh-row-shimmer-sweep_1rdzk_1",
+    "highlight": "_dsh-row-shimmer-highlight_1rdzk_1"
+  },
+  "mirrored": ["sweep", "highlight"],
+  "mirror": {
+    "mask": "linear-gradient(75deg",
+    "note": "180 - 105; the travel is reversed by dsh-arabic-shimmer-sweep/highlight in index.js"
+  }
+}

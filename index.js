@@ -66,13 +66,28 @@ input[dir="rtl"] {
    Both layers are mirrored here with keyframes of their own — reversing only the
    animation direction desynchronises the pair, and the tint then reads as a
    shadow behind the text. Duration, delay and the stepped timing function stay
-   the app's, so the motion is exactly as smooth as the English one. */
-html:lang(ar) .sweep {
+   the app's: this block only renames an animation, so it can never re-enable one
+   the app turned off for prefers-reduced-motion.
+
+   Two things decide whether any of it lands, and both were measured against the
+   shipped app rather than assumed:
+   - the class names. The build renames every CSS module class, so the app's
+     .sweep reaches the DOM as _sweep_1rdzk_34 and a bare .sweep selector matches
+     nothing in production. The attribute pattern below is what matches; the plain
+     class is kept for the DOM shim and for builds that keep the names, and
+     data/shimmer-pins.json records what this was verified against;
+   - the locale gate. html:lang(ar) works because the app points the html lang
+     attribute at the active locale — the right semantic source. The
+     data-dsh-arabic-locale attribute is ours, written by the browser half from the
+     same locale snapshot, so a change upstream cannot quietly kill the mirror. */
+html:lang(ar) :is(.sweep, [class*="_sweep_"]),
+[data-dsh-arabic-locale="ar"] :is(.sweep, [class*="_sweep_"]) {
   animation-name: dsh-arabic-shimmer-sweep;
   transform: translateX(100%);
   mask-image: linear-gradient(75deg, transparent 0%, black 40% 60%, transparent 100%);
 }
-html:lang(ar) .highlight {
+html:lang(ar) :is(.highlight, [class*="_highlight_"]),
+[data-dsh-arabic-locale="ar"] :is(.highlight, [class*="_highlight_"]) {
   animation-name: dsh-arabic-shimmer-highlight;
   transform: translateX(-100%);
 }

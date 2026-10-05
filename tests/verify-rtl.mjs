@@ -314,8 +314,11 @@ check('the prose block inside such a row is still flipped', rtl(cardText), `dir=
 
 check('style element injected', document.getElementById('dsh-arabic-style') !== null)
 check('CSS keeps code LTR', styleRow.text.includes('direction: ltr'))
-check('CSS mirrors the activity shimmer for Arabic', /html:lang\(ar\)\s*\.sweep/.test(styleRow.text) && /dsh-arabic-shimmer-sweep/.test(styleRow.text))
-check('CSS mirrors both shimmer layers together', /html:lang\(ar\)\s*\.highlight/.test(styleRow.text) && /dsh-arabic-shimmer-highlight/.test(styleRow.text) && !/animation-direction:\s*reverse/.test(styleRow.text))
+check('CSS mirrors the activity shimmer for Arabic', /html:lang\(ar\)[^{]*\bsweep\b/.test(styleRow.text) && /dsh-arabic-shimmer-sweep/.test(styleRow.text))
+check('the mirror also matches the hashed class the shipped build renders', /\[class\*="_sweep_"\]/.test(styleRow.text) && /\[class\*="_highlight_"\]/.test(styleRow.text), 'CSS modules are renamed at build time: the app ships _sweep_1rdzk_34, not .sweep')
+check('the mirror has a locale gate this plugin owns', /\[data-dsh-arabic-locale="ar"\]/.test(styleRow.text))
+check('CSS mirrors both shimmer layers together', /html:lang\(ar\)[^{]*\bhighlight\b/.test(styleRow.text) && /dsh-arabic-shimmer-highlight/.test(styleRow.text) && !/animation-direction:\s*reverse/.test(styleRow.text))
+check('the mirror never re-declares timing, so reduced motion keeps working', !/\banimation\s*:/.test(styleRow.text) && !/animation-(duration|delay|timing-function|iteration-count)\s*:/.test(styleRow.text))
 check('CSS no longer defers to the first strong character', !/unicode-bidi:\s*plaintext/.test(styleRow.text))
 check('observer attached for streamed content', MutationObserver.instances.length === 1)
 

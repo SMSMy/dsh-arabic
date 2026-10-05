@@ -159,22 +159,26 @@ lib/client.js                النصف البرمجي في المتصفح (مُ
 | `data/glossary.yml` | المسرد الآلي (المصطلح، العربية، ما يُتجنّب، ما لا يُترجم) |
 | `data/overrides.json` | توحيد الصيغ حيث اختلفت الدفعات المتوازية |
 | `data/term-map.json` | تطبيع المصطلحات المُطبَّق على كل قيمة في الخط |
+| `data/bidi-decisions.json` | كل عزل في عائلة سطر الحالة — وكل قيمة مختلطة — بسببها |
+| `data/shimmer-pins.json` | أسماء الفئات والـkeyframes المُجزأة التي قيست عليها مرآة الوميض |
 | `scripts/extract-catalog.mjs` | يعيد توليد `data/en-catalog.json` من المصادر الرسمية (`npm run extract`) |
 | `scripts/status.mjs` | نسبة التغطية مقابل مرجع upstream المسجَّل (`npm run status`) |
 | `scripts/build-client.mjs` | يتحقق من الحزمة ويعيد توليد `lib/client.js` (`--check` لـ CI) |
 | `scripts/assemble-translations.mjs` | يدمج دفعات الترجمة في `locales/ar.json` |
 | `scripts/lint-consistency.mjs` | يكشف ترجمة النص الإنجليزي الواحد بصيغتين |
-| `tests/golden-direction.mjs` | ٢٥ نصاً ذهبياً مع الاتجاه الواجب لكلٍّ منها |
+| `scripts/check-bidi-family.mjs` | يفشل — بتسمية المفتاح — على أي عزل غير مسجَّل في عائلة سطر الحالة |
+| `scripts/check-shimmer-pins.mjs` | يعيد التحقق من أسماء مرآة الوميض مقابل `app.asar` مثبَّت (خطوة إصدار) |
+| `tests/golden-direction.mjs` | ٣٠ نصاً ذهبياً مع الاتجاه الواجب لكلٍّ منها |
 | `docs/roadmap.md` | الطبقات الثلاث، وطلبات المصدر، وما لا ننوي فعله |
 | `AUDIT.md` | كيف بُني المشروع: كل خطوة وأمر ونتيجة بوابة |
 | `CONTRIBUTING.md` | كيف تضيف ترجمة أو تصلحها، والفحوص التي يشغّلها CI |
-| `tests/verify-rtl.mjs` | 12 اختباراً سلوكياً لطبقة الاتجاه على محاكي DOM |
+| `tests/verify-rtl.mjs` | ٥٥ اختباراً سلوكياً لطبقة الاتجاه على محاكي DOM |
 | `tests/verify-locales.mjs` | سلامة الكتالوج وعقد الملف وتسجيل اللغة |
 
 ## التطوير
 
 ```bash
-npm test                     # الاتجاه (34) + الترجمة (28) + المصفوفة الذهبية (25)
+npm test                     # الاتجاه (55) + الترجمة (32) + المصفوفة الذهبية (30)
 npm run check                # الاكتمال + تدقيق الاتساق + المصفوفة الذهبية
 npm run build                # إعادة توليد lib/client.js
 npm run status               # التغطية مقابل مرجع upstream المسجَّل

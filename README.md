@@ -171,6 +171,8 @@ a future slot change can never take the language pack down with it.
 | `data/glossary.yml` | machine-readable terminology (term, ar, avoid, do-not-translate) |
 | `data/overrides.json` | pinned wording where parallel batches disagreed |
 | `data/term-map.json` | term normalization applied to every value in the pipeline |
+| `data/bidi-decisions.json` | every live-status isolation, and every mixed-script value, with its reason |
+| `data/shimmer-pins.json` | the hashed class and keyframe names the activity mirror was verified against |
 | `scripts/extract-catalog.mjs` | regenerates `data/en-catalog.json` from the official upstream sources (`npm run extract`) |
 | `scripts/status.mjs` | coverage against the recorded upstream revision (`npm run status`) |
 | `scripts/build-client.mjs` | validates the pack and regenerates `lib/client.js` (`--check` for CI) |
@@ -182,15 +184,17 @@ a future slot change can never take the language pack down with it.
 | `docs/shimmer-compare.html` | the activity light frozen at one instant, English next to Arabic |
 | `CHANGELOG.md` | what changed in each release, and which report drove it |
 | `scripts/check-docs.mjs` | fails when a count in the docs disagrees with the suites |
+| `scripts/check-bidi-family.mjs` | fails, naming the key, on an unrecorded live-status isolation |
+| `scripts/check-shimmer-pins.mjs` | re-verifies the activity-mirror names against an installed `app.asar` (release step) |
 | `AUDIT.md` | how the project was built: every step, command and gate result |
 | `CONTRIBUTING.md` | how to add or fix a translation, and the checks CI runs |
-| `tests/verify-rtl.mjs` | 52 behavioural checks of the bidi layer on a DOM shim |
+| `tests/verify-rtl.mjs` | 55 behavioural checks of the bidi layer on a DOM shim |
 | `tests/verify-locales.mjs` | catalog integrity, artifact contract and registration checks |
 
 ## Development
 
 ```bash
-npm test                     # direction (52) + locale (28) + golden matrix (25)
+npm test                     # direction (55) + locale (32) + golden matrix (30)
 npm run check                # completeness + consistency lint + golden matrix
 npm run build                # regenerate lib/client.js
 npm run status               # coverage against the recorded upstream revision
