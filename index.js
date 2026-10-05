@@ -178,7 +178,14 @@ function dshArabicClient() {
      * dotted identifier. An ordinary Latin word standing alone is deliberately
      * NOT matched.
      */
-    var CODEISH = /https?:\/\/\S+|\S*[._/:+@#]\S*|\b[0-9a-f]{6,}\b|\b\d+\/\d+\b|\b[\w-]+\.[\w-]{2,}\b/g
+    /**
+     * A technical token: a URL, a path, a scoped package name, a sha, a ratio, a
+     * dotted file name. The separator only counts when a word character sits on
+     * **both** sides of it — otherwise a label such as `Note:` or `Error:` would
+     * be read as code, stop voting, and glue the Latin words after it into a unit
+     * they do not belong to. The behaviour is pinned in the golden matrix.
+     */
+    var CODEISH = /https?:\/\/\S+|\S*[\w][._/:+@#][\w]\S*|\b[0-9a-f]{6,}\b|\b\d+\/\d+\b|\b[\w-]+\.[\w-]{2,}\b/g
 
     /** True when one whitespace token looks like code, a path, a URL or a sha. */
     function isCodeish(token) {

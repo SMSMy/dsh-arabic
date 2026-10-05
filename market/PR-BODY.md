@@ -42,7 +42,7 @@ order, and every menu is English. No plugin in the catalog addresses either half
 
 - **52** bidi behaviour checks on a DOM shim — marking rules, code isolation,
   composer direction, streamed content, disable/restore, and the chrome cases above.
-- **25** golden direction strings (`tests/golden-direction.mjs`): the direction
+- **30** golden direction strings (`tests/golden-direction.mjs`): the direction
   each of them must get, including the two limits asserted on purpose.
 - **28** locale checks — catalog completeness against the official key set,
   placeholder integrity, artifact contract, language registration, settings row.

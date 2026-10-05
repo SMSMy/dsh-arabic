@@ -3,6 +3,17 @@
 Every release below is published to npm through trusted publishing (OIDC) with a
 provenance attestation, and every one carries the suite results it was cut from.
 
+## 0.2.9
+
+- **what counts as a code token is narrower and now pinned**: a separator only
+  makes a token technical when a word character sits on both sides of it, so a
+  label such as `Note:` or `Error:` votes again instead of being swallowed and
+  gluing the words after it. Five golden probes assert the mechanism directly
+  (`Note:` → 1 Latin word, `src/index.ts` → 0);
+- **one definition of a placeholder**: `scripts/lib/placeholders.mjs` replaces the
+  three identical copies, and covers `%d`, `%@` and `%1$s` — forms the old pattern
+  would have validated in one path and missed in another.
+
 ## 0.2.8
 
 Robustness pass over the internals, plus one documentation guard.

@@ -15,6 +15,7 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { placeholders } from '../scripts/lib/placeholders.mjs'
 import vm from 'node:vm'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -26,7 +27,7 @@ const check = (label, ok, extra = '') => results.push({ label, ok, extra })
 const english = JSON.parse(readFileSync(join(ROOT, 'data', 'en-catalog.json'), 'utf8'))
 const arabic = JSON.parse(readFileSync(join(ROOT, 'locales', 'ar.json'), 'utf8'))
 
-const vars = (s) => (s.match(/\{[a-zA-Z0-9_.]+\}|%s|\{\{?[a-zA-Z0-9_]+\}?\}/g) || []).sort().join(',')
+const vars = placeholders
 
 let total = 0
 const missing = []
@@ -189,3 +190,4 @@ for (const r of results) {
 }
 console.log(`\n${results.length - failed}/${results.length} locale checks passed`)
 process.exit(failed === 0 ? 0 : 1)
+

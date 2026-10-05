@@ -43,6 +43,11 @@ const CLAIMS = [
 ]
 
 const files = []
+/**
+ * Documents that record history rather than describe the current build: a count
+ * in them was true when it was written and must not be rewritten by this check.
+ */
+const HISTORICAL = new Set(['CHANGELOG.md', 'AUDIT.md'])
 const walk = (dir) => {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     // agent-kit is a local, gitignored doctrine folder — it is not this project's
@@ -50,7 +55,7 @@ const walk = (dir) => {
     if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'translations' || entry.name === 'agent-kit') continue
     const full = join(dir, entry.name)
     if (entry.isDirectory()) walk(full)
-    else if (entry.name.endsWith('.md')) files.push(full)
+    else if (entry.name.endsWith('.md') && !HISTORICAL.has(entry.name)) files.push(full)
   }
 }
 walk(ROOT)

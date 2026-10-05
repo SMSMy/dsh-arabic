@@ -16,6 +16,7 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { placeholders } from './lib/placeholders.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const argIndex = process.argv.indexOf('--from')
@@ -154,7 +155,7 @@ if (existsSync(termMapPath)) {
 
 /* ------------------------------------------------------------- validate --- */
 
-const vars = (s) => (s.match(/\{[a-zA-Z0-9_.]+\}|%s|\{\{?[a-zA-Z0-9_]+\}?\}/g) || []).sort().join(',')
+const vars = placeholders
 for (const [ns, dict] of Object.entries(english)) {
   for (const key of Object.keys(dict)) {
     const id = `${ns}#${key}`
@@ -197,3 +198,4 @@ console.log(`\nwrote locales/ar.json (${Object.keys(sorted).length} namespaces)`
 if (doneKeys < totalKeys) {
   console.log(`note: ${totalKeys - doneKeys} keys still untranslated — they fall back to English at runtime`)
 }
+

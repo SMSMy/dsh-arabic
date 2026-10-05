@@ -176,7 +176,7 @@ a future slot change can never take the language pack down with it.
 | `scripts/build-client.mjs` | validates the pack and regenerates `lib/client.js` (`--check` for CI) |
 | `scripts/assemble-translations.mjs` | merges translation batches into `locales/ar.json` |
 | `scripts/lint-consistency.mjs` | reports the same English string translated two ways |
-| `tests/golden-direction.mjs` | 25 golden strings with the direction each must get |
+| `tests/golden-direction.mjs` | 30 golden direction cases, including five that pin what counts as a code token |
 | `docs/roadmap.md` | the three layers, the upstream asks, and the deliberate non-goals |
 | `docs/status-bidi.html` · `docs/status-final.html` | how the live status line is spelled and why, rendered in both paragraph directions |
 | `docs/shimmer-compare.html` | the activity light frozen at one instant, English next to Arabic |

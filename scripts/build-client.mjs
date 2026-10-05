@@ -21,6 +21,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { placeholders } from './lib/placeholders.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const AR_PATH = join(ROOT, 'locales', 'ar.json')
@@ -68,7 +69,7 @@ for (const [ns, enDict] of Object.entries(english)) {
     } else {
       translated++
       // Placeholders must survive translation byte-for-byte.
-      const vars = (s) => (s.match(/\{[a-zA-Z0-9_.]+\}|%s|\{\{?[a-zA-Z0-9_]+\}?\}/g) || []).sort().join(',')
+      const vars = placeholders
       if (vars(en) !== vars(arDict[key])) {
         problems.push(`placeholder mismatch: ${ns}#${key} — en:[${vars(en)}] ar:[${vars(arDict[key])}]`)
       }
@@ -234,3 +235,4 @@ if (existsSync(OUT_PATH) && readFileSync(OUT_PATH, 'utf8') === clientSource) {
 }
 writeFileSync(OUT_PATH, clientSource)
 console.log(`wrote lib/client.js (${(clientSource.length / 1024).toFixed(1)} KB, ${Object.keys(arabic).length} namespaces)`)
+

@@ -96,5 +96,22 @@ const sticky = window.__dshArabic.weigh('شغّل npx @deepseek-ai/dsh web')
 const plain = window.__dshArabic.weigh('شغّل git status')
 console.log(`\nweights: glued command -> rtl=${sticky.rtl} ltr=${sticky.ltr} | bare words -> rtl=${plain.rtl} ltr=${plain.ltr}`)
 
-console.log(`\n${matrix.length - failed}/${matrix.length} golden cases passed — ${fileURLToPath(new URL('..', import.meta.url))}`)
+/* What counts as a code token, pinned at the mechanism level. A separator only
+   makes a token code-like when there is a word character on both sides of it, so
+   a label such as `Note:` still votes while `src/index.ts` still does not. */
+const probes = [
+  ['Note:', 1, 'a trailing colon is punctuation, not code — the word still votes'],
+  ['Error:', 1, 'same for an error label'],
+  ['src/index.ts', 0, 'a real path is still a code token'],
+  ['@deepseek-ai/dsh', 0, 'a scoped package name is still a code token'],
+  ['15/15', 0, 'a ratio is still a code token']
+]
+for (const [text, expectedLtr, label] of probes) {
+  const w = window.__dshArabic.weigh(text)
+  const ok = w.ltr === expectedLtr
+  failed += ok ? 0 : 1
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ltr=${w.ltr} ${ok ? '' : `(want ${expectedLtr}) `}${label}`)
+}
+
+console.log(`\n${matrix.length + probes.length - failed}/${matrix.length + probes.length} golden cases passed — ${fileURLToPath(new URL('..', import.meta.url))}`)
 process.exit(failed === 0 ? 0 : 1)

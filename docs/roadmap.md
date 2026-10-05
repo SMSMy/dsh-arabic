@@ -21,7 +21,7 @@ What exists today:
 - a `dir` set by the app or the author is **never overridden**;
 - `pre`, `code`, inline code and the composer are handled explicitly.
 
-Covered by `tests/golden-direction.mjs` (25 golden strings, including the two
+Covered by `tests/golden-direction.mjs` (30 golden strings, including the two
 documented limits) and `tests/verify-rtl.mjs` (34 DOM behaviour checks).
 
 Known limits, asserted rather than hidden:
