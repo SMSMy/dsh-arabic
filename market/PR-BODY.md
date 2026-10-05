@@ -2,7 +2,11 @@
 
 **The gap.** DSH ships an English-only interface with no RTL support. Mixing Arabic
 prose with English identifiers, paths and code inside the GUI scrambles the text
-order, and every menu is English. No plugin in the catalog addresses either half.
+order, and every menu is English. The catalog already carries an RTL layer for
+Hebrew (`kfirsch/dsh-hebrew-rtl`) and an i18n plugin that registers `ar` with a
+different coverage (`mimateinn/dsh-i18n`); what is missing is the Arabic half as a
+language pack, plus a direction layer that keeps developer text — paths, commands,
+shas — readable while it flips the prose.
 
 **What the plugin does**
 
