@@ -54,6 +54,17 @@ input[dir="rtl"] {
   text-align: right;
 }
 
+/* Activity animations sweep with the text, not against it.
+   The running labels ("جارٍ تشغيل الأوامر", "التفكير العميق جارٍ") draw a masked
+   overlay — .sweep — that travels left to right under the dsh-row-shimmer-sweep
+   animation. Read right-to-left that motion moves backwards, so for Arabic it is
+   reversed. Only the animation direction changes: no layout, no colour, no text.
+   The rule keys on the document language, which the app keeps in <html lang>. */
+html:lang(ar) .sweep,
+html:lang(ar) [class*="sweep"] {
+  animation-direction: reverse;
+}
+
 /* Keep LTR chrome inside an RTL block from inheriting RTL flow. */
 [data-dsh-arabic-bidi="1"] button,
 [data-dsh-arabic-bidi="1"] input,

@@ -305,6 +305,7 @@ check('the prose block inside such a row is still flipped', rtl(cardText), `dir=
 
 check('style element injected', document.getElementById('dsh-arabic-style') !== null)
 check('CSS keeps code LTR', styleRow.text.includes('direction: ltr'))
+check('CSS reverses the activity shimmer for Arabic', /html:lang\(ar\)\s*\.sweep/.test(styleRow.text) && /animation-direction:\s*reverse/.test(styleRow.text))
 check('CSS no longer defers to the first strong character', !/unicode-bidi:\s*plaintext/.test(styleRow.text))
 check('observer attached for streamed content', MutationObserver.instances.length === 1)
 

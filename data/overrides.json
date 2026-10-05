@@ -45,6 +45,6 @@
   "conversation#ask.reopen": "الإجابة",
 
   "_bidi_comment": "شريط الحالة الحيّ: المؤقّت يعمل، فالصيغة مضارعة لا ماضية («استغرق» خطأ لأن العمل لم ينتهِ). النقاط ··· تبقى في اليمين بعزل القيمة كاملة في LRI/PDI، والكلمات العربية تُقرأ صحيحة داخل مقطعها — والخيار حُسم بالتجربة البصرية في docs/status-bidi.html ثم docs/status-final.html.",
-  "chat#chat.deepDiving": "جارٍ التفكير العميق",
-  "chat#chat.deepDivingFor": "\u2066جارٍ التفكير العميق منذ {duration} ···\u2069"
+  "chat#chat.deepDiving": "التفكير العميق جارٍ",
+  "chat#chat.deepDivingFor": "\u2066التفكير العميق جارٍ منذ {duration} ···\u2069"
 }
