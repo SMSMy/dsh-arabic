@@ -35,7 +35,7 @@
   },
   "chat": {
     "chat.deepDiving": "تعمّق",
-    "chat.deepDivingFor": "تعمّق لمدة ⁦{duration}⁩ ···",
+    "chat.deepDivingFor": "⁦تعمّق لمدة {duration} ···⁩",
     "chat.loadError": "فشل تحميل السجل: {message} ({code})",
     "chat.loadOlder": "تحميل الأقدم",
     "chat.loadingHistory": "جارٍ تحميل السجل…",

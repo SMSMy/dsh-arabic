@@ -54,8 +54,9 @@ class FakeNode {
     let node = this
     while (node && node.nodeType === 1) {
       for (const part of parts) {
-        if (part.startsWith('[') && part.endsWith(']')) {
-          if (node.attributes.has(part.slice(1, -1))) return node
+        const attr = part.match(/^\[([^\]=\]]+)(?:="([^"]*)")?\]$/)
+        if (attr) {
+          if (node.attributes.has(attr[1]) && (attr[2] === undefined || node.attributes.get(attr[1]) === attr[2])) return node
         } else if (node.tagName === part.toUpperCase()) return node
       }
       node = node.parentElement
@@ -308,6 +309,48 @@ check('CSS no longer defers to the first strong character', !/unicode-bidi:\s*pl
 check('observer attached for streamed content', MutationObserver.instances.length === 1)
 
 const observer = MutationObserver.instances[0]
+
+// Chrome surfaces are never touched: text inside a dialog, a nav or the shell
+// keeps the layout's own alignment, so the settings window cannot end up with one
+// label centered, another right and a third left. Every fixture here is pushed
+// through the observer, so the assertion is about the rule and not about timing.
+const dialog = el('div')
+dialog.setAttribute('role', 'dialog')
+dialog.setAttribute('aria-modal', 'true')
+dialog.display = 'block'
+const dialogLabel = el('div')
+dialogLabel.display = 'block'
+dialogLabel.appendChild(text('حجم الخط'))
+dialog.appendChild(dialogLabel)
+document.body.appendChild(dialog)
+
+const nav = el('nav')
+nav.display = 'block'
+const navItem = el('div')
+navItem.display = 'block'
+navItem.appendChild(text('الموديلات'))
+nav.appendChild(navItem)
+document.body.appendChild(nav)
+
+// Content outside chrome must still flip, or the exclusion would swallow the
+// feature it protects.
+const contentOutside = el('div')
+contentOutside.display = 'block'
+contentOutside.appendChild(text('نص محتوى عربي خارج الهيكل'))
+document.body.appendChild(contentOutside)
+
+const domCase = el('div')
+domCase.display = 'block'
+domCase.appendChild(text('نص عربي آخر للتأكيد'))
+document.body.appendChild(domCase)
+
+if (observer) {
+  observer.callback([{ type: 'childList', addedNodes: [dialogLabel, navItem, contentOutside, domCase], target: document.body }])
+  await new Promise((resolve) => setTimeout(resolve, 140))
+}
+check('a dialog block is never marked', untouched(dialogLabel), `dir=${dialogLabel.getAttribute('dir')}`)
+check('a nav block is never marked', untouched(navItem), `dir=${navItem.getAttribute('dir')}`)
+check('content outside chrome is still marked', rtl(contentOutside), `dir=${contentOutside.getAttribute('dir')}`)
 
 // Streamed Arabic arriving in a fresh element.
 const lateBlock = paragraph('نص وصل متأخراً')

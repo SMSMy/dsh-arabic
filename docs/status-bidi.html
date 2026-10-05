@@ -1,0 +1,68 @@
+<!doctype html>
+<!--
+  status-bidi.html — how should the live status line be written for Arabic?
+
+  The English string is "Deep diving for 4m 39s ···": the ellipsis sits at the end
+  of the line and the timer grows towards it. In an RTL paragraph the same
+  characters put the dots at the far left instead, which is what the status line
+  in the app looks like now. This page renders the candidate spellings side by
+  side, in both paragraph directions, so the choice is made by looking rather
+  than by reasoning about UAX #9.
+
+  Render:  chrome --headless=new --screenshot=docs/status-bidi.png --window-size=920,560 docs/status-bidi.html
+  Marks:  ⁦ = U+2066 LRI, ⁧ = U+2069 PDI, ⁨ = U+2068 FSI, ⁩ = U+2069 PDI
+-->
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 18px 22px; background: #12161f; color: #e8ecf5;
+         font: 15px/1.7 "Segoe UI", system-ui, sans-serif; }
+  h1 { font-size: 15px; margin: 0 0 14px; color: #9fb0d9; font-weight: 600; }
+  table { border-collapse: collapse; }
+  td, th { padding: 7px 12px; border-bottom: 1px solid #262c3a; vertical-align: middle; }
+  th { color: #9fb0d9; font-weight: 600; text-align: left; font-size: 13px; }
+  .case { color: #7f8aa3; font-size: 12.5px; white-space: nowrap; }
+  .cell { background: #1b2130; border-radius: 6px; padding: 4px 10px; min-width: 330px; }
+  .ltr { direction: ltr; }
+  .rtl { direction: rtl; }
+  .timer { color: #8fb7ff; }
+</style>
+<h1>«تعمّق لمدة {duration} ···» — candidate spellings, both paragraph directions</h1>
+<table>
+  <tr><th>How the value is written</th><th>paragraph LTR</th><th>paragraph RTL</th></tr>
+
+  <tr>
+    <td class="case">A · plain (what shipped)</td>
+    <td><div class="cell ltr">تعمّق لمدة <span class="timer">7ث</span> ···</div></td>
+    <td><div class="cell rtl">تعمّق لمدة <span class="timer">7ث</span> ···</div></td>
+  </tr>
+
+  <tr>
+    <td class="case">B · duration isolated (LRI…PDI)</td>
+    <td><div class="cell ltr">تعمّق لمدة &#x2066;<span class="timer">7ث</span>&#x2069; ···</div></td>
+    <td><div class="cell rtl">تعمّق لمدة &#x2066;<span class="timer">7ث</span>&#x2069; ···</div></td>
+  </tr>
+
+  <tr>
+    <td class="case">C · whole value in an LTR isolate</td>
+    <td><div class="cell ltr">&#x2066;تعمّق لمدة <span class="timer">7ث</span> ···&#x2069;</div></td>
+    <td><div class="cell rtl">&#x2066;تعمّق لمدة <span class="timer">7ث</span> ···&#x2069;</div></td>
+  </tr>
+
+  <tr>
+    <td class="case">D · dots first in the source</td>
+    <td><div class="cell ltr">··· تعمّق لمدة <span class="timer">7ث</span></div></td>
+    <td><div class="cell rtl">··· تعمّق لمدة <span class="timer">7ث</span></div></td>
+  </tr>
+
+  <tr>
+    <td class="case">E · dots in their own LTR isolate, last</td>
+    <td><div class="cell ltr">تعمّق لمدة <span class="timer">7ث</span> &#x2066;···&#x2069;</div></td>
+    <td><div class="cell rtl">تعمّق لمدة <span class="timer">7ث</span> &#x2066;···&#x2069;</div></td>
+  </tr>
+
+  <tr>
+    <td class="case">F · the English line, for reference</td>
+    <td><div class="cell ltr">Deep diving for <span class="timer">7s</span> ···</div></td>
+    <td><div class="cell rtl">Deep diving for <span class="timer">7s</span> ···</div></td>
+  </tr>
+</table>

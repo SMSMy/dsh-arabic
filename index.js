@@ -101,6 +101,19 @@ function dshArabicClient() {
    * is not a hypothetical case.
    */
   var INTERACTIVE = 'button,select,[role="button"],[role="combobox"],[role="menuitem"],[role="tab"],[role="switch"],[role="checkbox"]'
+  /**
+   * Chrome surfaces: the shell, its menus and its dialogs. Text inside them is
+   * never given a direction of its own, because a per-block decision inside a
+   * layout that is authored LTR produces ragged alignment — the reported "once
+   * centered, once right, once left" in the settings window, where every label
+   * was right-aligned inside its own width instead of sharing one margin.
+   *
+   * DSH marks its panels with `role="dialog"` and `aria-modal`, and its shell
+   * uses the usual landmarks, so this is a semantic test rather than a guess
+   * about class names. Content (messages, tool output, documents) is not inside
+   * these, and the composer is handled by its own code path.
+   */
+  var CHROME = '[role="dialog"],[aria-modal="true"],nav,aside,header,footer,[role="navigation"],[role="menu"],[role="menubar"],[role="tablist"],[role="toolbar"],[role="listbox"],[role="banner"],[role="complementary"],[role="form"]'
   var SKIP_SELECTOR = 'pre,code,kbd,samp,var,tt,script,style,noscript,template,input,textarea,select,option,svg,path,canvas,img,video,audio'
 
   try {
@@ -232,17 +245,25 @@ function dshArabicClient() {
     }
 
     /**
-     * Only text blocks are direction candidates.
+     * Only text blocks are direction candidates — and only in content.
      *
-     * Chrome is excluded on purpose (see docs/roadmap.md, "chrome vs content"):
-     * a flex or grid container reorders its children when it flips, and a row
-     * that owns buttons is a toolbar. The Arabic text inside those rows is still
-     * handled — it lives in its own block element, which remains a candidate —
-     * so an Arabic permission label reads correctly without moving the
-     * composer's send button to the other side.
+     * Chrome is excluded by three tests, in order of how much damage getting it
+     * wrong does:
+     *   1. it lives inside a chrome surface (a dialog, a menu, the shell) — a
+     *      per-block decision there produces ragged alignment, so chrome keeps
+     *      the layout's own alignment and only the text runs follow bidi;
+     *   2. its computed display is flex or grid — flipping one reorders children;
+     *   3. it owns interactive controls — that is a toolbar, not prose.
+     *
+     * The Arabic text inside those rows is still handled when it sits in a normal
+     * block of its own, so an Arabic permission label reads correctly without
+     * moving the composer's send button.
      */
     function isBlockCandidate(el) {
       if (!el || el.nodeType !== 1 || SKIP[el.tagName]) return false
+      try {
+        if (el.closest && el.closest(CHROME)) return false
+      } catch (err) {}
       if (CONTAINER[el.tagName]) return true
       var display = ''
       try { display = getComputedStyle(el).display || '' } catch (err) { display = '' }
