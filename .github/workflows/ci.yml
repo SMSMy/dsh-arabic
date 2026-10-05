@@ -41,6 +41,9 @@ jobs:
       - name: Documentation counts match the suites
         run: node scripts/check-docs.mjs
 
+      - name: Live-status family decisions are on record
+        run: node scripts/check-bidi-family.mjs
+
       - name: Locale pack contract + registration tests
         run: node tests/verify-locales.mjs
 

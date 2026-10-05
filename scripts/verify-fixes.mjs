@@ -17,6 +17,7 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { liveStatusFamily, readDecisions, familyProblems } from './lib/live-status.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const read = (p) => readFileSync(join(ROOT, p), 'utf8')
@@ -115,27 +116,19 @@ const check = (id, claim, ok, evidence) => {
 
 /* 11 — the claim that the whole ellipsis family needs isolation */
 {
-  const en = JSON.parse(read('data/en-catalog.json'))
-  const ar = JSON.parse(read('locales/ar.json'))
-  let family = 0
-  let mixed = 0
-  let isolated = 0
-  for (const ns of Object.keys(en)) {
-    for (const key of Object.keys(en[ns])) {
-      if (!/···|…\s*$/.test(en[ns][key])) continue
-      family++
-      const value = (ar[ns] || {})[key] || ''
-      // A placeholder such as {count} holds Latin letters without being text; the
-      // question is whether *visible* Latin or digits sit next to the ellipsis.
-      const withoutPlaceholders = value.replace(/\{[^}]*\}/g, '')
-      const isMixed = /[A-Za-z0-9]/.test(withoutPlaceholders) && /[\u0600-\u06FF]/.test(withoutPlaceholders)
-      if (isMixed) mixed++
-      if (value.startsWith('\u2066')) isolated++
-    }
-  }
-  check('11', 'REFUTED: the live-status family does not need a bulk rewrite',
-    mixed === 1 && isolated === 1,
-    `family ${family} strings, mixed-script ${mixed}, isolated ${isolated} — pure Arabic strings put their ellipsis at the logical end already`)
+  // One definition of the family and one record of the decisions, shared with the
+  // gate (scripts/check-bidi-family.mjs), so a readback and a gate cannot disagree.
+  const family = liveStatusFamily(ROOT)
+  const problems = familyProblems(family, readDecisions(ROOT))
+  const ids = (test) => [...family].filter(([, v]) => test(v)).map(([id]) => id)
+  const isolated = ids((v) => v.isolated)
+  const mixed = ids((v) => v.mixed)
+
+  check('11', 'REFUTED: no bulk rewrite — isolation stays a recorded per-key decision',
+    problems.length === 0,
+    problems.length
+      ? problems.join(' · ')
+      : `family ${family.size} · isolated ${isolated.length} (${isolated.join(', ') || 'none'}) · mixed-script ${mixed.length} on record in data/bidi-decisions.json`)
 }
 
 /* 12 — the sync branch cannot collide */

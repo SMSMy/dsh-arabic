@@ -1,0 +1,9 @@
+{
+  "_comment": "Recorded decisions for the live-status family (see scripts/lib/live-status.mjs). Isolation is inert in an LTR block and moves the ellipsis in an RTL one, and which block a string lands in belongs to the surface that renders it — not to the catalogue. Add an entry here, with its reason, before isolating another key; check-bidi-family.mjs fails on any isolation or mixed-script value that is not on this record.",
+  "isolated": {
+    "chat#chat.deepDivingFor": "whole value wrapped in LRI/PDI by the visual decision in docs/status-bidi.html (row C), confirmed in docs/status-final.html"
+  },
+  "mixedScript": {
+    "sidebarTerminal#shellLoading": "waived: the shell menu of the terminal guide is chrome (LTR by policy), and in an LTR block the ellipsis already sits after the phrase — measured, not assumed"
+  }
+}

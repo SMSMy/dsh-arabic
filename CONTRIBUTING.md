@@ -67,6 +67,7 @@ they fall back to English — so a partial update never breaks the interface.
 npm test                                   # 52 bidi + 28 locale + 30 golden checks
 node scripts/build-client.mjs --check      # catalog completeness + placeholders
 node scripts/lint-consistency.mjs --strict # same English translated two ways
+node scripts/check-bidi-family.mjs         # live-status isolation stays a recorded decision
 node scripts/assemble-translations.mjs --from translations
 ```
 

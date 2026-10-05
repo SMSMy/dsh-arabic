@@ -46,7 +46,8 @@
     "lint": "node scripts/lint-consistency.mjs --strict",
     "status": "node scripts/status.mjs",
     "docs": "node scripts/check-docs.mjs",
-    "check": "node scripts/build-client.mjs --check && node scripts/lint-consistency.mjs --strict && node scripts/check-docs.mjs && npm test"
+    "family": "node scripts/check-bidi-family.mjs",
+    "check": "node scripts/build-client.mjs --check && node scripts/lint-consistency.mjs --strict && node scripts/check-docs.mjs && node scripts/check-bidi-family.mjs && npm test"
   },
   "engines": {
     "node": ">=20"
