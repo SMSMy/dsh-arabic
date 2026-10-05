@@ -1,0 +1,66 @@
+<!doctype html>
+<!--
+  shimmer-compare.html — proof that the mirrored pair sweeps the other way.
+
+  The app's activity light is two layers that must stay in step:
+    .sweep      a moving mask over tinted glyphs      translateX(-100%) -> (100%)
+    .highlight  a counter-moving block under the mask (100%) -> (-100%)
+  Each cell below freezes those layers at a chosen moment of the cycle with a
+  negative animation-delay and animation-play-state: paused, so the position of
+  the light is comparable between the English layout and the Arabic override.
+  A tinted bar travels through a grey word; mirroring means the bar is at the
+  mirrored position at the same instant.
+
+  Render: chrome --headless=new --screenshot=docs/shimmer-compare.png --window-size=1000,420 <file-url>
+-->
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 18px 22px; background: #12161f; color: #e8ecf5;
+         font: 15px/1.6 "Segoe UI", system-ui, sans-serif; }
+  h1 { font-size: 14px; margin: 0 0 14px; color: #9fb0d9; font-weight: 600; }
+  .row { display: flex; gap: 18px; align-items: center; margin-bottom: 14px; }
+  .tag { width: 92px; color: #7f8aa3; font-size: 12.5px; }
+  .frame { position: relative; width: 250px; height: 34px; overflow: hidden;
+           background: #1b2130; border-radius: 6px; display: flex; align-items: center;
+           padding: 0 10px; }
+  .word { position: relative; font-weight: 600; color: #4b5878; }
+  .tint { position: absolute; inset: 0; color: #8fb7ff; }
+  .tint span { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 10px; }
+
+  /* the app's own animation */
+  .sweep { position: absolute; inset: 0; overflow: hidden; color: #8fb7ff;
+           mask-image: linear-gradient(105deg, transparent 0%, black 40% 60%, transparent 100%);
+           transform: translateX(-100%); animation-name: dsh-row-shimmer-sweep; }
+  .highlight { position: absolute; inset: 0; background: currentColor;
+               transform: translateX(100%); animation-name: dsh-row-shimmer-highlight; }
+  .sweep, .highlight { animation-duration: 1.5s; animation-delay: -0.45s; animation-timing-function: steps(48, end);
+                       animation-iteration-count: infinite; animation-play-state: paused; }
+  @keyframes dsh-row-shimmer-sweep { 0% { transform: translateX(-100%); } 66.6667%, 100% { transform: translateX(100%); } }
+  @keyframes dsh-row-shimmer-highlight { 0% { transform: translateX(100%); } 66.6667%, 100% { transform: translateX(-100%); } }
+
+  /* dsh-arabic for Arabic: both layers mirrored, same timing */
+  .ar .sweep { animation-name: dsh-arabic-shimmer-sweep; transform: translateX(100%);
+               mask-image: linear-gradient(75deg, transparent 0%, black 40% 60%, transparent 100%); }
+  .ar .highlight { animation-name: dsh-arabic-shimmer-highlight; transform: translateX(-100%); }
+  @keyframes dsh-arabic-shimmer-sweep { 0% { transform: translateX(100%); } 66.6667%, 100% { transform: translateX(-100%); } }
+  @keyframes dsh-arabic-shimmer-highlight { 0% { transform: translateX(-100%); } 66.6667%, 100% { transform: translateX(100%); } }
+</style>
+<h1>نفس اللحظة (‎-0.45s‎) من الدورة: الإنجليزية مقابل العربية — الشريط يجب أن يكون في الموضع المعكوس</h1>
+
+<div class="row">
+  <div class="tag">English</div>
+  <div class="frame">
+    <div class="word">Deep diving for 4m 39s</div>
+    <div class="tint"><div class="sweep"><span>Deep diving for 4m 39s</span></div></div>
+    <div class="highlight"></div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="tag">العربية</div>
+  <div class="frame ar">
+    <div class="word">التفكير العميق جارٍ</div>
+    <div class="tint"><div class="sweep"><span>التفكير العميق جارٍ</span></div></div>
+    <div class="highlight"></div>
+  </div>
+</div>

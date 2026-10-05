@@ -55,14 +55,30 @@ input[dir="rtl"] {
 }
 
 /* Activity animations sweep with the text, not against it.
-   The running labels ("جارٍ تشغيل الأوامر", "التفكير العميق جارٍ") draw a masked
-   overlay — .sweep — that travels left to right under the dsh-row-shimmer-sweep
-   animation. Read right-to-left that motion moves backwards, so for Arabic it is
-   reversed. Only the animation direction changes: no layout, no colour, no text.
-   The rule keys on the document language, which the app keeps in <html lang>. */
-html:lang(ar) .sweep,
-html:lang(ar) [class*="sweep"] {
-  animation-direction: reverse;
+   The running labels ("جارٍ تشغيل الأوامر", "التفكير العميق جارٍ") draw the word
+   twice: .sweep carries a moving mask over tinted glyphs, and .highlight is a
+   counter-moving block that keeps the glyphs aligned under that mask. The pair
+   travels left to right, so read right-to-left the light moves backwards.
+   Both layers are mirrored here with keyframes of their own — reversing only the
+   animation direction desynchronises the pair, and the tint then reads as a
+   shadow behind the text. Duration, delay and the stepped timing function stay
+   the app's, so the motion is exactly as smooth as the English one. */
+html:lang(ar) .sweep {
+  animation-name: dsh-arabic-shimmer-sweep;
+  transform: translateX(100%);
+  mask-image: linear-gradient(75deg, transparent 0%, black 40% 60%, transparent 100%);
+}
+html:lang(ar) .highlight {
+  animation-name: dsh-arabic-shimmer-highlight;
+  transform: translateX(-100%);
+}
+@keyframes dsh-arabic-shimmer-sweep {
+  0% { transform: translateX(100%); }
+  66.6667%, 100% { transform: translateX(-100%); }
+}
+@keyframes dsh-arabic-shimmer-highlight {
+  0% { transform: translateX(-100%); }
+  66.6667%, 100% { transform: translateX(100%); }
 }
 
 /* Keep LTR chrome inside an RTL block from inheriting RTL flow. */
