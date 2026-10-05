@@ -1,0 +1,43 @@
+<!doctype html>
+<!--
+  status-final.html — preview of the shipped status wording, both directions.
+
+  English: "Deep diving for 4m 39s ···" (a live counter, present tense).
+  Arabic has to carry the same meaning: work in progress, elapsed time, dots last.
+  The value keeps its LTR isolate so the dots stay on the right in RTL too.
+
+  Render: chrome --headless=new --screenshot=docs/status-final.png --window-size=980,300 <file-url>
+-->
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 20px 24px; background: #12161f; color: #e8ecf5;
+         font: 16px/1.9 "Segoe UI", system-ui, sans-serif; }
+  h1 { font-size: 14px; margin: 0 0 16px; color: #9fb0d9; font-weight: 600; }
+  table { border-collapse: collapse; }
+  td, th { padding: 8px 14px; border-bottom: 1px solid #262c3a; }
+  th { color: #9fb0d9; font-weight: 600; text-align: left; font-size: 13px; }
+  .case { color: #7f8aa3; font-size: 12.5px; white-space: nowrap; }
+  .cell { background: #1b2130; border-radius: 6px; padding: 5px 12px; min-width: 340px; }
+  .ltr { direction: ltr; }
+  .rtl { direction: rtl; }
+  .t { color: #8fb7ff; }
+</style>
+<h1>الشريط الحيّ — الصيغة المُعتمدة (0.2.5)</h1>
+<table>
+  <tr><th>الحالة</th><th>اتجاه الفقرة LTR</th><th>اتجاه الفقرة RTL</th></tr>
+  <tr>
+    <td class="case">قبل بدء المؤقّت</td>
+    <td><div class="cell ltr">جارٍ التفكير العميق</div></td>
+    <td><div class="cell rtl">جارٍ التفكير العميق</div></td>
+  </tr>
+  <tr>
+    <td class="case">أثناء العمل</td>
+    <td><div class="cell ltr">&#x2066;جارٍ التفكير العميق منذ <span class="t">4 د 39 ث</span> ···&#x2069;</div></td>
+    <td><div class="cell rtl">&#x2066;جارٍ التفكير العميق منذ <span class="t">4 د 39 ث</span> ···&#x2069;</div></td>
+  </tr>
+  <tr>
+    <td class="case">مرجع إنجليزي</td>
+    <td><div class="cell ltr">Deep diving for <span class="t">4m 39s</span> ···</div></td>
+    <td><div class="cell rtl">Deep diving for <span class="t">4m 39s</span> ···</div></td>
+  </tr>
+</table>
