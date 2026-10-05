@@ -392,6 +392,16 @@ function dshArabicClient() {
           var block = blockOf(el)
           if (block) reconcile(block)
           if (containsRtl(el) === false) reconcile(el)
+          // A control can mount deeper than the block it belongs to (a dropdown
+          // inside a wrapper inside the row). A mark set before it arrived would
+          // stay and mirror the whole row, which is what made the settings panel
+          // look half-flipped — so re-check every marked ancestor too.
+          var up = el.parentElement
+          var guard = 0
+          while (up && guard++ < 40) {
+            if (up.getAttribute && up.getAttribute(MARK) === '1') reconcile(up)
+            up = up.parentElement
+          }
         } catch (err) {}
       }
       for (i = 0; i < items.length; i++) {

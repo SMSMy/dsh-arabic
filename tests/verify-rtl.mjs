@@ -354,6 +354,29 @@ if (observer) {
   observer.callback([{ type: 'childList', addedNodes: [lateSwitch], target: lateRow }])
   await new Promise((resolve) => setTimeout(resolve, 120))
   check('the mark is withdrawn once the row owns a control', untouched(lateRow), `dir=${lateRow.getAttribute('dir')}`)
+
+  // A control can mount one level deeper than the row: the wrapper is the
+  // mutation target, and the marked row above it must still be released.
+  const deepRow = el('div')
+  deepRow.display = 'block'
+  const deepLabel = el('span')
+  deepLabel.display = 'inline'
+  deepLabel.appendChild(text('صف إعدادات عربي آخر'))
+  const deepWrap = el('div')
+  deepWrap.display = 'block'
+  deepRow.appendChild(deepLabel)
+  deepRow.appendChild(deepWrap)
+  document.body.appendChild(deepRow)
+  observer.callback([{ type: 'childList', addedNodes: [deepRow], target: document.body }])
+  await new Promise((resolve) => setTimeout(resolve, 120))
+  check('a second prose row is marked', rtl(deepRow), `dir=${deepRow.getAttribute('dir')}`)
+
+  const deepControl = el('button')
+  deepControl.setAttribute('role', 'switch')
+  deepWrap.appendChild(deepControl)
+  observer.callback([{ type: 'childList', addedNodes: [deepControl], target: deepWrap }])
+  await new Promise((resolve) => setTimeout(resolve, 120))
+  check('a control mounting deeper releases the marked ancestor', untouched(deepRow), `dir=${deepRow.getAttribute('dir')}`)
 }
 
 // …and a block that becomes English-only again must be released.
