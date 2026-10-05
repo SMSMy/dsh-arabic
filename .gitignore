@@ -3,6 +3,8 @@
 agent-kit/
 # local agent contract (adapted from agent-kit/); keep the repo artifact-free
 AGENTS.md
+# local session handoff (a snapshot holding local paths); never published or committed
+HANDOFF.md
 
 # --- tooling / build output ---
 node_modules/
