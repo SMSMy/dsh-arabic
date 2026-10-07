@@ -37,6 +37,26 @@ shas — readable while it flips the prose.
   selector, and a switch in Settings → General turns the RTL layer off and on
   (remembered, fully reverting when off).
 
+**Screenshots**
+
+Direction, before and after — rendered by Chromium with the real bidi engine: both
+columns carry the same five lines, each opening with a Latin token. The left column
+is the first-strong rule, the right one is prose dominance.
+
+![before and after: the first-strong rule against prose dominance](https://raw.githubusercontent.com/SMSMy/dsh-arabic/main/docs/direction.png)
+
+The question card the assistant asks with, before and after (v0.3.2) — the same
+markup and the same strings on both sides, with the `dir` attributes the layer writes
+on the right. The option's number badge and the buttons keep their sides in both: the
+card is not mirrored, its text is.
+
+![the question card before and after](https://raw.githubusercontent.com/SMSMy/dsh-arabic/main/docs/question-card.png)
+
+The activity light, frozen at one instant of its cycle: English above, Arabic below.
+The bright band is mirrored.
+
+![the activity light frozen at one instant: English next to Arabic](https://raw.githubusercontent.com/SMSMy/dsh-arabic/main/docs/shimmer-compare.png)
+
 **Submission requirements**
 
 - `package.json` declares `dsh.bundle` (`{ "bundle": { "patch": "./cordis.patch.yml" } }`) with `cordis.patch.yml` at the repository root.
