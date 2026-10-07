@@ -53,6 +53,29 @@ both are excluded, so the composer's send button keeps its side even though the
 Arabic permission label sits in that same row. The Arabic text inside such a row
 lives in its own block and is still handled.
 
+Two shapes needed more than a plain block decision, and both are pinned by tests
+and by `data/card-pins.json`:
+
+- **a text cell CSS has blockified.** The question card the assistant uses to ask
+  a question draws each option as a flex `<button>`, and its label and description
+  are `<span>`s inside it. A genuinely inline span is part of the flow around it,
+  but a flex item is a text block of its own: each cell takes RTL, so
+  `ادفع fix/rust-flake كما هو` reads in order instead of backwards, while the row
+  keeps its number badge on the left;
+- **a content card's own `<header>`/`<footer>`.** DSH wraps the question itself in
+  a `<header>` (`header` and `footer` are landmarks of the shell, and stay chrome).
+  The card's frame carries `data-question-key` — the one app marker this layer
+  reads — so a landmark *inside* the card is the card's own part and its question
+  is content like any other paragraph. `scripts/check-card-pins.mjs <app.asar>`
+  fails, naming the difference, when a build moves that marker or stops building
+  the option row as a flex row;
+- **what does not move:** the option's number badge, and the controls themselves. A
+  row that owns a control is never flipped, and a control is never given a direction
+  of its own — a flex button would reverse its icon and label, and a centred label
+  would jump to an edge. So the number stays where the design put it, the card's
+  buttons keep their layout, and the Arabic text starts beside them: the card is not
+  mirrored, its text is.
+
 If a block's direction is set by the app or by you (`dir="ltr"` in the markup),
 this layer never touches it: that is the escape hatch for any block the estimator
 gets wrong.
@@ -194,7 +217,7 @@ a future slot change can never take the language pack down with it.
 ## Development
 
 ```bash
-npm test                     # direction (55) + locale (32) + golden matrix (30)
+npm test                     # direction (63) + locale (32) + golden matrix (30)
 npm run check                # completeness + consistency lint + golden matrix
 npm run build                # regenerate lib/client.js
 npm run status               # coverage against the recorded upstream revision

@@ -17,6 +17,12 @@
  * `dir="auto"`, i.e. the first-strong rule) is deliberately NOT used: it gets a
  * line wrong whenever it opens with a Latin token.
  *
+ * Two shapes are handled beyond a plain block of prose, both pinned by tests:
+ * a text cell that is an inline tag CSS has blockified (the question card's
+ * option label and description are `<span>`s inside a flex `<button>` row) takes
+ * a direction of its own without moving the row, and a content card's own
+ * `<header>`/`<footer>` do not make its text chrome — see CONTENT_CARD below.
+ *
  * Injection channel: `webserver/index-inject`. On the packaged Desktop app the
  * table is collected ONCE at host startup, so the rows are registered
  * synchronously in `apply()` — deferring them behind a service inject would
@@ -159,6 +165,15 @@ function dshArabicClient() {
    */
   var INTERACTIVE = 'button,select,[role="button"],[role="combobox"],[role="menuitem"],[role="tab"],[role="switch"],[role="checkbox"]'
   /**
+   * The element is *itself* a control. Its own copy is the control's label and
+   * keeps the control's layout: a flex button reverses its icon and label when
+   * its direction flips, and a centred label jumps to an edge when the alignment
+   * is overridden — the same family as the send button that moved sides. So a
+   * control is never a candidate for a direction of its own; the text blocks
+   * inside it still are (the question card's option label is a cell of its own).
+   */
+  var CONTROL = INTERACTIVE + ',[role="radio"]'
+  /**
    * Chrome surfaces: the shell, its menus and its dialogs. Text inside them is
    * never given a direction of its own, because a per-block decision inside a
    * layout that is authored LTR produces ragged alignment — the reported "once
@@ -169,8 +184,27 @@ function dshArabicClient() {
    * uses the usual landmarks, so this is a semantic test rather than a guess
    * about class names. Content (messages, tool output, documents) is not inside
    * these, and the composer is handled by its own code path.
+   *
+   * The two halves are kept apart because the *tags* are weaker evidence than
+   * the roles: a card may draw its own `<header>`/`<footer>` and mean "the top
+   * and bottom of this card", not "a landmark of the shell".
    */
-  var CHROME = '[role="dialog"],[aria-modal="true"],nav,aside,header,footer,[role="navigation"],[role="menu"],[role="menubar"],[role="tablist"],[role="toolbar"],[role="listbox"],[role="banner"],[role="complementary"],[role="form"]'
+  var CHROME_ROLE = '[role="dialog"],[aria-modal="true"],[role="navigation"],[role="menu"],[role="menubar"],[role="tablist"],[role="toolbar"],[role="listbox"],[role="banner"],[role="complementary"],[role="form"]'
+  var CHROME_TAG = 'nav,aside,header,footer'
+  /**
+   * Content cards that draw their own `<header>`/`<footer>`.
+   *
+   * DSH builds the composer's question card — the panel that asks the reader to
+   * pick an option — as a `<section>` whose question sits in an authored
+   * `<header>` and whose pager and buttons sit in a `<footer>`. Those tags are
+   * the card's own parts, so its question is content and may take a direction
+   * like any other block; only the landmark tags *outside* such a card are
+   * chrome. The frame carries `data-question-key`; the marker is pinned in
+   * data/card-pins.json and re-read from the shipped archive by
+   * scripts/check-card-pins.mjs, because a rename upstream would silently send
+   * the question back to LTR.
+   */
+  var CONTENT_CARD = '[data-question-key]'
   var SKIP_SELECTOR = 'pre,code,kbd,samp,var,tt,script,style,noscript,template,input,textarea,select,option,svg,path,canvas,img,video,audio'
 
   try {
@@ -318,6 +352,15 @@ function dshArabicClient() {
       return value
     }
 
+    /** The element itself is a control, not a block of prose. */
+    function isControl(el) {
+      try {
+        return !!(el.closest && el.closest(CONTROL) === el)
+      } catch (err) {
+        return false
+      }
+    }
+
     /**
      * A block's text and whether it carries Arabic, in one walk. The previous shape
      * walked every subtree twice — once to weigh it, once to ask whether it held
@@ -340,26 +383,62 @@ function dshArabicClient() {
     }
 
     /**
+     * Is this element inside a chrome surface? Roles settle it; tags settle it
+     * only outside a content card, so a card's own `<header>` does not make its
+     * question chrome.
+     */
+    function inChrome(el) {
+      try {
+        if (el.closest && el.closest(CHROME_ROLE)) return true
+      } catch (err) {}
+      var landmark = null
+      try {
+        landmark = el.closest ? el.closest(CHROME_TAG) : null
+      } catch (err) { landmark = null }
+      if (!landmark) return false
+      try {
+        return !(landmark.closest && landmark.closest(CONTENT_CARD))
+      } catch (err) {
+        return true
+      }
+    }
+
+    /**
+     * An inline-by-default tag that CSS has blockified — a flex or grid item, or
+     * an explicit `display` — is a text cell in its own right, not part of the
+     * flow around it. The question card is the case that matters: each option is
+     * a flex `<button>` whose label and description are `<span>`s, and walking
+     * past them lands on the row (flex, owns a control) and gives up, leaving a
+     * mixed `ادفع fix/rust-flake كما هو` in LTR run order. `display: contents`
+     * keeps the tag's own box out of the layout, so it stays inline here.
+     */
+    function isBlockifiedInline(el) {
+      var display = computedDisplay(el)
+      return !!display && display !== 'contents' && display.indexOf('inline') !== 0
+    }
+
+    /**
      * Only text blocks are direction candidates — and only in content.
      *
-     * Chrome is excluded by three tests, in order of how much damage getting it
+     * Chrome is excluded by four tests, in order of how much damage getting it
      * wrong does:
      *   1. it lives inside a chrome surface (a dialog, a menu, the shell) — a
      *      per-block decision there produces ragged alignment, so chrome keeps
      *      the layout's own alignment and only the text runs follow bidi;
      *   2. its computed display is flex or grid — flipping one reorders children;
-     *   3. it owns interactive controls — that is a toolbar, not prose.
+     *   3. it owns interactive controls — that is a toolbar, not prose;
+     *   4. it *is* a control — its label belongs to the control's layout.
      *
      * The Arabic text inside those rows is still handled when it sits in a normal
-     * block of its own, so an Arabic permission label reads correctly without
-     * moving the composer's send button.
+     * block of its own — or in a blockified inline cell such as an option label —
+     * so an Arabic permission label reads correctly without moving the composer's
+     * send button.
      */
     function isBlockCandidate(el) {
       if (!el || el.nodeType !== 1 || SKIP[el.tagName]) return false
-      if (INLINEISH[el.tagName]) return false
-      try {
-        if (el.closest && el.closest(CHROME)) return false
-      } catch (err) {}
+      if (INLINEISH[el.tagName] && !isBlockifiedInline(el)) return false
+      if (inChrome(el)) return false
+      if (isControl(el)) return false
       if (CONTAINER[el.tagName]) return true
       var display = computedDisplay(el)
       if (!display || display.indexOf('inline') === 0) return false
@@ -368,20 +447,39 @@ function dshArabicClient() {
       return true
     }
 
-    /** Nearest block (or container) ancestor, starting at the node itself. */
+    /**
+     * Nearest block (or container) ancestor, starting at the node itself.
+     *
+     * Inline-by-default tags are walked past without a style read — a page of
+     * prose is mostly spans inside blocks, and every read is a reflow — but the
+     * first one seen is kept unread: a text cell that CSS has blockified (a flex
+     * item such as an option label) is the block when nothing above it qualifies.
+     * Asking is a read, so it is asked only when the walk found nothing usable,
+     * which keeps prose exactly as cheap as it was.
+     */
     function blockOf(node) {
       var el = node && node.nodeType === 1 ? node : (node ? node.parentElement : null)
       var fallback = null
+      var inlineish = null
       while (el && el !== document.body && el !== document.documentElement) {
         if (SKIP[el.tagName]) { el = el.parentElement; continue }
         if (CONTAINER[el.tagName]) return el
-        // Inline-by-default tags need no style read to walk past.
-        if (INLINEISH[el.tagName]) { el = el.parentElement; continue }
+        if (INLINEISH[el.tagName]) {
+          if (!inlineish) inlineish = el
+          el = el.parentElement
+          continue
+        }
         if (!fallback) {
           var display = computedDisplay(el)
           if (display && display.indexOf('inline') !== 0) fallback = el
         }
         el = el.parentElement
+      }
+      if (!inlineish || (fallback && isBlockCandidate(fallback))) return fallback
+      var cell = inlineish
+      while (cell && cell !== document.body && cell !== document.documentElement) {
+        if (INLINEISH[cell.tagName] && isBlockifiedInline(cell) && isBlockCandidate(cell)) return cell
+        cell = cell.parentElement
       }
       return fallback
     }

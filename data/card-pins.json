@@ -1,0 +1,31 @@
+{
+  "_comment": "What the question-card handling was verified against in the shipped app. DSH renders the composer's question card as a <section> whose question sits in the card's own <header> and whose pager sits in its <footer>, and each option is a flex <button> whose label and description are <span> cells. The layer needs both facts to be true — the frame's data-question-key is what tells it the landmarks are the card's own parts, and the flex row is what makes those cells blockified — and both fail silently if a build moves them: the card then reads exactly as it does without this plugin. scripts/check-card-pins.mjs reads them out of an installed app.asar and fails, naming the difference. Run it before a release (see docs/releasing.md) — it is not in CI, which has no DSH install.",
+  "app": {
+    "package": "@deepseek-ai/dsh-client-ui-user-questions",
+    "version": "0.2.0-rc.2",
+    "verified": "2026-10-06",
+    "archive": "app.asar"
+  },
+  "module": "@deepseek-ai/dsh-client-ui-user-questions/lib/client.js",
+  "frame": {
+    "attribute": "data-question-key",
+    "source": "\"data-question-key\": pending.key",
+    "note": "the frame around the card; index.js exempts the card's own landmarks through it"
+  },
+  "landmarks": {
+    "header": ")(\"header\", {",
+    "footer": ")(\"footer\", {",
+    "note": "the card draws its own parts with landmark tags, which is why the tag half of the chrome test yields inside it"
+  },
+  "cells": {
+    "classes": ["option", "optionCopy", "optionLine", "optionLabel", "description"],
+    "flex": ["option", "optionLine"],
+    "hint": "display:flex",
+    "note": "a flex row blockifies its inline children, so the label and description cells are text blocks of their own; optionCopy is a flex item too (flex:1)"
+  },
+  "plugin": {
+    "marker": "[data-question-key]",
+    "probe": "isBlockifiedInline",
+    "note": "index.js must still carry both halves: the card marker and the blockified-cell probe"
+  }
+}

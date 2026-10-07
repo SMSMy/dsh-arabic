@@ -42,9 +42,9 @@ shas — readable while it flips the prose.
 - No official `@deepseek-ai/*` package is declared as a dependency; the browser
   half touches only the `locale` service and the baseline primitives.
 
-**Verification (all green on 0.3.1)**
+**Verification (all green on 0.3.2)**
 
-- **55** bidi behaviour checks on a DOM shim — marking rules, code isolation,
+- **63** bidi behaviour checks on a DOM shim — marking rules, code isolation,
   composer direction, streamed content, disable/restore, and the chrome cases above.
 - **30** golden direction strings (`tests/golden-direction.mjs`): the direction
   each of them must get, including the two limits asserted on purpose.

@@ -18,11 +18,19 @@ What exists today:
   already RTL stays RTL until the text is clearly Latin;
 - tables, lists and definition lists are judged as **containers**, so their
   markers move with them;
+- a text cell that CSS has **blockified** (the question card's option label and
+  description are spans inside a flex `<button>`) is a block of its own, so it
+  takes RTL without moving the row's number badge;
+- a content card's own `<header>`/`<footer>` do not read as shell chrome
+  (`data-question-key` marks the composer's question card), while every landmark
+  outside such a card still does;
 - a `dir` set by the app or the author is **never overridden**;
 - `pre`, `code`, inline code and the composer are handled explicitly.
 
 Covered by `tests/golden-direction.mjs` (30 golden strings, including the two
-documented limits) and `tests/verify-rtl.mjs` (34 DOM behaviour checks).
+documented limits) and `tests/verify-rtl.mjs` (63 DOM behaviour checks), with the
+question card's shape pinned in `data/card-pins.json` and re-read from an installed
+archive by `scripts/check-card-pins.mjs`.
 
 Known limits, asserted rather than hidden:
 

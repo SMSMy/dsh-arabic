@@ -24,6 +24,11 @@ git diff --exit-code lib/client.js
 # against) — re-verify against an installed app. This cannot run in CI, which has
 # no DSH install.
 node scripts/check-shimmer-pins.mjs "$LOCALAPPDATA/Programs/DeepSeek Harness/resources/app.asar"
+
+# the question card is the one content surface whose chrome exemption and whose
+# text cells both depend on the shape DSH builds (data/card-pins.json) — same
+# reason, same place to check.
+node scripts/check-card-pins.mjs "$LOCALAPPDATA/Programs/DeepSeek Harness/resources/app.asar"
 ```
 
 If upstream DSH added strings, translate them first:

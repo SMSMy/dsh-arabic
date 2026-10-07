@@ -259,6 +259,81 @@ cardRow.appendChild(cardText)
 cardRow.appendChild(cardButton)
 document.body.appendChild(cardRow)
 
+// The composer's question card, as the shipped build renders it: a <section>
+// whose question sits in the card's own <header> and whose pager sits in its
+// <footer>, with one flex <button> per option holding blockified <span> cells.
+// Three things are asserted below: the question takes RTL even though it lives in
+// a <header>, the option row itself never moves, and the label cell — a mixed
+// `ادفع fix/rust-flake كما هو` — does take RTL, because in LTR run order it reads
+// backwards.
+const cardFrame = el('div')
+cardFrame.setAttribute('data-question-key', 'q-1')
+cardFrame.display = 'flex'
+const cardSection = el('section')
+cardSection.setAttribute('aria-labelledby', 'question-q-1-0')
+cardSection.display = 'flex'
+const cardHeader = el('header')
+cardHeader.display = 'flex'
+const headingBlock = el('div')
+headingBlock.display = 'block'
+const cardTitle = el('h2')
+cardTitle.display = 'block'
+cardTitle.appendChild(text('ادفع fix/rust-flake كما هو؟ أَدفعه ليحكم CI على العدّاء؟'))
+headingBlock.appendChild(cardTitle)
+cardHeader.appendChild(headingBlock)
+const cardOptions = el('div')
+cardOptions.setAttribute('role', 'radiogroup')
+cardOptions.display = 'flex'
+const optionRow = el('button')
+optionRow.setAttribute('role', 'radio')
+optionRow.display = 'flex'
+const optionNumber = el('span')
+optionNumber.display = 'grid'                        // blockified: a flex item
+optionNumber.appendChild(text('1'))
+const optionCopy = el('span')
+optionCopy.display = 'block'                         // blockified: a flex item
+const optionLine = el('span')
+optionLine.display = 'flex'
+const optionLabel = el('span')
+optionLabel.display = 'block'                        // blockified: a flex item
+optionLabel.appendChild(text('ادفع fix/rust-flake كما هو'))
+const optionDescription = el('span')
+optionDescription.display = 'block'
+optionDescription.appendChild(text('البرهان المطلوب هو خطوة Rust baseline gate وحدها.'))
+optionLine.appendChild(optionLabel)
+optionLine.appendChild(optionDescription)
+optionCopy.appendChild(optionLine)
+optionRow.appendChild(optionNumber)
+optionRow.appendChild(optionCopy)
+cardOptions.appendChild(optionRow)
+const cardFooter = el('footer')
+cardFooter.display = 'flex'
+const cardPager = el('span')
+cardPager.display = 'flex'
+cardPager.appendChild(text('1/1'))
+// A control in the card footer: blockified (a flex item) and carrying Arabic, but
+// its label belongs to the control's layout — a flex button reverses its icon and
+// label when it flips, and a centred label jumps to an edge.
+const cardAction = el('button')
+cardAction.display = 'block'
+cardAction.appendChild(text('تخطي'))
+cardFooter.appendChild(cardPager)
+cardFooter.appendChild(cardAction)
+cardSection.appendChild(cardHeader)
+cardSection.appendChild(cardOptions)
+cardSection.appendChild(cardFooter)
+cardFrame.appendChild(cardSection)
+document.body.appendChild(cardFrame)
+
+// A landmark of the shell is still chrome: the tag test only yields inside a card.
+const shellHeader = el('header')
+shellHeader.display = 'flex'
+const shellTitle = el('div')
+shellTitle.display = 'block'
+shellTitle.appendChild(text('عنوان الجلسة العربية'))
+shellHeader.appendChild(shellTitle)
+document.body.appendChild(shellHeader)
+
 /* ------------------------------------------------------------------- run --- */
 
 const { default: plugin } = await import('../index.js')
@@ -311,6 +386,16 @@ check('composer switches to rtl for Arabic', composer.getAttribute('dir') === 'r
 check('a flex toolbar is never flipped', untouched(toolbar), `dir=${toolbar.getAttribute('dir')}`)
 check('a row owning a button is never flipped', cardRow.getAttribute('dir') === null && cardRow.getAttribute(MARK) === null, `dir=${cardRow.getAttribute('dir')}`)
 check('the prose block inside such a row is still flipped', rtl(cardText), `dir=${cardText.getAttribute('dir')}`)
+
+// The question card: content that draws its own <header>/<footer>.
+check('a question card is content: its title in the card header takes RTL', rtl(cardTitle), `dir=${cardTitle.getAttribute('dir')}`)
+check('a shell header is still chrome and never marked', untouched(shellTitle), `dir=${shellTitle.getAttribute('dir')}`)
+check('an option row (a flex button) never moves', untouched(optionRow), `dir=${optionRow.getAttribute('dir')}`)
+check('the option label cell takes RTL, so its run order is not reversed', rtl(optionLabel), `dir=${optionLabel.getAttribute('dir')}`)
+check('the option description cell takes RTL', rtl(optionDescription), `dir=${optionDescription.getAttribute('dir')}`)
+check('the option text column itself is left to inherit', untouched(optionCopy) && untouched(optionLine), `copy=${optionCopy.getAttribute('dir')} line=${optionLine.getAttribute('dir')}`)
+check('a blockified cell with no Arabic is untouched', untouched(optionNumber), `dir=${optionNumber.getAttribute('dir')}`)
+check('a control in the card keeps its own layout', untouched(cardAction), `dir=${cardAction.getAttribute('dir')}`)
 
 check('style element injected', document.getElementById('dsh-arabic-style') !== null)
 check('CSS keeps code LTR', styleRow.text.includes('direction: ltr'))

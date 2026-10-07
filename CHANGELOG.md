@@ -3,6 +3,43 @@
 Every release below is published to npm through trusted publishing (OIDC) with a
 provenance attestation, and every one carries the suite results it was cut from.
 
+## 0.3.2
+
+The question card the assistant asks with was the one content surface the layer
+never reached: it stayed LTR while everything around it was Arabic. Confirmed live
+in the Desktop app after a restart — the same question that read backwards in the
+report now reads in order, with mixed punctuation and Latin tokens mid-sentence.
+
+- **a blockified text cell now takes a direction of its own.** DSH draws each option
+  as a flex `<button>` whose label and description are `<span>`s, and the walk
+  treated every inline-by-default tag as part of the flow around it — landing on the
+  button, which is a flex row that owns a control, and giving up. A flex item is a
+  text block in its own right: each cell is marked, so `ادفع fix/rust-flake كما هو`
+  reads in order instead of backwards, and the row keeps its number badge where the
+  design put it. The probe reads a style only when the walk found nothing usable, so
+  prose costs exactly what it did (`--bench 1000`: 2,031 → 1,031 style reads over
+  2,000 elements, against 1,026 before the change);
+- **a content card's own `<header>`/`<footer>` no longer read as shell chrome.** The
+  question sits in the card's `<header>`, so the landmark-tag half of the chrome test
+  was suppressing it — the question stayed left-aligned and its mixed runs stayed in
+  LTR order. Roles still settle chrome first; the tags now yield inside a card whose
+  frame carries `data-question-key`, the one app marker this layer reads. Every
+  landmark outside the card — the session header, the sidebar, the settings panels —
+  is unchanged (a shell `<header>` is asserted untouched in the suite);
+- **a control is never given a direction of its own.** Exempting the card's
+  `<footer>` exposed the next shape: its action buttons are blockified flex items
+  carrying Arabic, so they became candidates — and a marked flex button reverses its
+  icon and label, while a centred label jumps to an edge when the alignment is
+  overridden. Buttons, selects and `role=button/radio/switch/…` now stop the walk for
+  the text inside them but are never marked themselves. Measured on a regression board
+  in Chromium: four text cells gained a direction and **no element moved**, including
+  the composer's send button and the card's pager;
+- `data/card-pins.json` + `scripts/check-card-pins.mjs <app.asar>` record what this
+  was verified against in the shipped app (the marker, the card's landmark tags, and
+  the flex row whose cells are spans) and fail, naming the difference, when a build
+  moves any of them — a rename here is otherwise silent, which is how this shipped
+  broken. `tests/verify-rtl.mjs` grows eight checks around the same shapes: 55 → 63.
+
 ## 0.3.1
 
 The activity light was mirrored in the stylesheet and never in the browser.
