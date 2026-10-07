@@ -24,7 +24,10 @@ shas — readable while it flips the prose.
   - **chrome is never flipped**: flex/grid containers and rows owning interactive
     controls are excluded, because flipping one reorders icons and buttons — the
     Arabic label in the composer's toolbar must not move the send button. The text
-    inside such a row lives in its own block and is still handled;
+    inside such a row lives in its own block and is still handled: a blockified text
+    cell (the question card's option label) takes its own direction and reads in
+    order, while a control never does — the card's number badge and buttons keep the
+    sides the design gave them;
   - a `dir` set by the app or the author is **never** overridden.
 - **A full Arabic interface pack** — 3,228 strings across 59 namespaces,
   registered through the official client locale service (`ctx.locale.addLanguage`
@@ -61,7 +64,11 @@ shas — readable while it flips the prose.
 hand-written, `scripts/status.mjs` reports coverage against the recorded upstream
 commit, and a weekly workflow re-extracts and opens a PR containing only the new
 keys. Terminology is pinned in `data/glossary.yml` and enforced by
-`data/term-map.json`, so the same English string cannot ship two ways.
+`data/term-map.json`, so the same English string cannot ship two ways. Two shapes
+this plugin depends on in DSH itself are pinned and re-verified against an installed
+`app.asar` before every release — the hashed activity-mirror classes
+(`data/shimmer-pins.json`) and the question card's markup (`data/card-pins.json`) —
+because both fail silently when a build renames them.
 
 **Category:** `ui` — it changes how the interface renders and speaks.
 
