@@ -217,8 +217,9 @@ a future slot change can never take the language pack down with it.
 | `scripts/check-shimmer-pins.mjs` | re-verifies the activity-mirror names against an installed `app.asar` (release step) |
 | `AUDIT.md` | how the project was built: every step, command and gate result |
 | `CONTRIBUTING.md` | how to add or fix a translation, and the checks CI runs |
-| `tests/verify-rtl.mjs` | 55 behavioural checks of the bidi layer on a DOM shim |
+| `tests/verify-rtl.mjs` | 63 behavioural checks of the bidi layer on a DOM shim |
 | `tests/verify-locales.mjs` | catalog integrity, artifact contract and registration checks |
+| `data/card-pins.json` | the question card's shape (marker, landmarks, flex row), re-verified against an installed `app.asar` (release step) |
 
 ## Development
 
