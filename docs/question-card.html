@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ar" dir="ltr">
+<head>
+<meta charset="utf-8">
+<title>dsh-arabic — the question card, rendered</title>
+<style>
+  /* The card markup and the class names are the ones DSH ships
+     (@deepseek-ai/dsh-client-ui-user-questions, CSS modules renamed at build time:
+     mAtvLq_*). The strings are the ones from the report. Only the two panels'
+     direction differs — the right one carries exactly the attributes the layer
+     writes, and its rule is the layer's own stylesheet line. */
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 28px 32px 32px;
+    background: #14161c; color: #e7e9ee;
+    font-family: "Segoe UI", Tahoma, "Noto Naskh Arabic", sans-serif;
+  }
+  h1 { font-size: 19px; margin: 0 0 4px; font-weight: 600; }
+  .sub { font-size: 12.5px; color: #9aa3b2; margin-bottom: 22px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+  .panel { border: 1px solid #262a34; border-radius: 10px; overflow: hidden; background: #191c23; }
+  .panel h2 {
+    margin: 0; padding: 10px 14px; font-size: 13px; font-weight: 600;
+    border-bottom: 1px solid #262a34; background: #1d212a;
+  }
+  .panel h2 .tag { font-weight: 400; color: #9aa3b2; }
+  .shipped h2 { color: #ffb4a8; }
+  .fixed h2 { color: #9ae6b4; }
+  .note { margin-top: 18px; font-size: 12px; color: #8b93a1; line-height: 1.6; }
+
+  /* --- the shipped card, reduced to the two shapes this figure is about --- */
+  .card {
+    display: flex; flex-direction: column; gap: 0;
+    background: #242424; border-radius: 16px; padding: 0 0 10px;
+    color: #e8e8e8; margin: 12px;
+  }
+  .card * { box-sizing: border-box; }
+  .cardHeader { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 20px 16px 0 24px; }
+  .headingBlock { min-width: 0; }
+  .eyebrow { color: #8a8a8a; margin-bottom: 5px; font-size: 11px; line-height: 16px; }
+  .title { margin: 0; font-size: 16px; font-weight: 500; line-height: 22px; }
+  .cardBody { display: flex; flex-direction: column; }
+  .options { display: flex; flex-direction: column; gap: 1px; margin: 8px 0 0; padding: 4px 12px; }
+  .option {
+    display: flex; align-items: flex-start; gap: 8px; width: 100%; min-height: 40px;
+    text-align: left; background: #2f2f2f; border: 1px solid #4a4a4a; border-radius: 8px;
+    padding: 8px 12px 8px 8px; font: inherit; color: inherit;
+  }
+  .number {
+    flex: 0 0 20px; width: 20px; height: 20px; margin-top: 2px; border-radius: 4px;
+    background: #3a3a3a; color: #a0a0a0; font-size: 12px; font-weight: 500;
+    display: grid; place-items: center;
+  }
+  .optionCopy { flex: 1; min-width: 0; }
+  .optionLine { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+  .optionLabel { font-size: 14px; font-weight: 500; line-height: 24px; }
+  .description { color: #8a8a8a; font-size: 14px; line-height: 24px; }
+
+  /* exactly the line the injected stylesheet carries */
+  [data-dsh-arabic-bidi="1"] { direction: rtl; unicode-bidi: isolate; text-align: start; }
+</style>
+</head>
+<body>
+<h1>البطاقة التي يسأل بها المساعد</h1>
+<div class="sub">The composer's question card — same markup, same strings; only the direction of the text blocks differs.</div>
+
+<div class="grid">
+  <section class="panel shipped">
+    <h2>as shipped <span class="tag">— no direction on any block</span></h2>
+    <div class="card">
+      <div class="cardHeader">
+        <div class="headingBlock">
+          <div class="eyebrow">دفع فرع الأساس</div>
+          <h2 class="title">‏`fix/rust-flake` مُتحقَّق منه عندي (483/0/8 · fmt نظيف · والمُفسِد أسقط الحارس بيدي). أَدفعه ليحكم CI على العدّاء؟ (فرع جديد وحده — لا دمج ولا وسم)</h2>
+        </div>
+      </div>
+      <div class="cardBody">
+        <div class="options" role="radiogroup">
+          <button type="button" class="option" role="radio" aria-checked="true">
+            <span class="number">1</span>
+            <span class="optionCopy"><span class="optionLine">
+              <span class="optionLabel">ادفع fix/rust-flake كما هو (موصى به)</span>
+              <span class="description">البرهان المطلوب هو خطوة Rust baseline gate وحدها، وهي متاحة في البنية الحالية؛ والتصحيحان بعد الحكم حتى لا نخلط سببين في تشغيل واحد.</span>
+            </span></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel fixed">
+    <h2>with dsh-arabic <span class="tag">— dir on the text blocks only</span></h2>
+    <div class="card">
+      <div class="cardHeader">
+        <div class="headingBlock" dir="rtl" data-dsh-arabic-bidi="1">
+          <div class="eyebrow" dir="rtl" data-dsh-arabic-bidi="1">دفع فرع الأساس</div>
+          <h2 class="title" dir="rtl" data-dsh-arabic-bidi="1">‏`fix/rust-flake` مُتحقَّق منه عندي (483/0/8 · fmt نظيف · والمُفسِد أسقط الحارس بيدي). أَدفعه ليحكم CI على العدّاء؟ (فرع جديد وحده — لا دمج ولا وسم)</h2>
+        </div>
+      </div>
+      <div class="cardBody">
+        <div class="options" role="radiogroup">
+          <button type="button" class="option" role="radio" aria-checked="true">
+            <span class="number">1</span>
+            <span class="optionCopy"><span class="optionLine">
+              <span class="optionLabel" dir="rtl" data-dsh-arabic-bidi="1">ادفع fix/rust-flake كما هو (موصى به)</span>
+              <span class="description" dir="rtl" data-dsh-arabic-bidi="1">البرهان المطلوب هو خطوة Rust baseline gate وحدها، وهي متاحة في البنية الحالية؛ والتصحيحان بعد الحكم حتى لا نخلط سببين في تشغيل واحد.</span>
+            </span></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="note">
+  <p dir="rtl" style="margin: 0 0 6px">الرقم يبقى في اليسار في اللوحتين: الصفّ الذي يملك زراً لا يُقلب، وعنصر التحكّم لا يُمنح اتجاهاً — الاتجاه للكتل النصّية وحدها. والرمز اللاتيني في وسط الجملة هو ما يفصح عن الفرق: في اللوح الأيسر تقسم المقاطعُ الجملةَ بترتيب معكوس، وفي الأيمن يُقرأ السطر من اليمين بترتيبه.</p>
+  <p>Source: this file, rendered by Chromium with the real bidi algorithm. Markup and strings are the ones in the report; the right panel carries the attributes the layer writes.</p>
+</div>
+<!-- render: chrome --headless=new --window-size=1180,470 --screenshot=docs/question-card.png docs/question-card.html -->
+</body>
+</html>

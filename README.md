@@ -76,6 +76,12 @@ and by `data/card-pins.json`:
   buttons keep their layout, and the Arabic text starts beside them: the card is not
   mirrored, its text is.
 
+![Before and after: the question card with and without the layer](https://raw.githubusercontent.com/SMSMy/dsh-arabic/main/docs/question-card.png)
+
+<sub>Rendered by Chromium with the real bidi algorithm: the same card markup and the same
+strings on both sides, with the `dir` attributes the layer writes on the right. The number
+badge stays on the left in both. Source: [docs/question-card.html](docs/question-card.html).</sub>
+
 If a block's direction is set by the app or by you (`dir="ltr"` in the markup),
 this layer never touches it: that is the escape hatch for any block the estimator
 gets wrong.
