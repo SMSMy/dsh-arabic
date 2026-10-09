@@ -1,319 +1,292 @@
 # dsh-arabic
 
-**Arabic for DeepSeek Harness — proper bidi/RTL rendering, a full Arabic UI language pack, and thmanyah's serif as the interface font.**
+**العربية** · [English](README.en.md)
+
+**العربية لتطبيق DeepSeek Harness — عرض RTL سليم تقنياً، وحزمة تعريب كاملة للواجهة، وخطّ ثمانية للواجهة.**
 
 [![CI](https://github.com/SMSMy/dsh-arabic/actions/workflows/ci.yml/badge.svg)](https://github.com/SMSMy/dsh-arabic/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/dsh-arabic)](https://www.npmjs.com/package/dsh-arabic)
+[![downloads](https://img.shields.io/npm/dm/dsh-arabic?label=downloads)](https://www.npmjs.com/package/dsh-arabic)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-DSH has no RTL support and no Arabic locale. Mixing Arabic prose with English
-identifiers, paths and code inside the GUI makes text look scrambled, and every
-menu is English-only. This plugin fixes both, without patching the app.
+DSH لا يدعم RTL ولا يوفّر لغة عربية. خلط النص العربي بأسماء المتغيّرات والمسارات
+والأكواد داخل الواجهة يجعل الكلام مبعثراً، وكل القوائم إنجليزية. هذا البلاقن يحل
+المشكلتين **دون تعديل التطبيق نفسه**.
 
-## What it does
+## ما الذي يفعله
 
-### 1. Bidi-safe RTL rendering (works regardless of UI language)
+### ١) عرض RTL آمن ثنائي الاتجاه (يعمل بأي لغة واجهة)
 
-Direction is decided **per block by script dominance**, not by the first strong
-character. The tokenizer splits on whitespace only, so `@deepseek-ai/dsh` counts
-as *one* word rather than three:
+الاتجاه يُحسم **لكل كتلة بهيمنة الكلمات**، لا بأول حرف قوي. والتقسيم على
+المسافات فقط، فـ`@deepseek-ai/dsh` تُحسب **كلمة واحدة** لا ثلاثاً:
 
-| Content | Direction | Why |
+| المحتوى | الاتجاه | السبب |
 |---|---|---|
-| `كيف حالك Hello` | RTL | Arabic words dominate |
-| `Hello كيف حالك` | RTL | still Arabic words — `dir="auto"` would get this **wrong** |
-| `Error: فشل الاتصال بالخادم` | RTL | the sentence is Arabic, the prefix is not |
-| `npm install ثم أعد التشغيل` | RTL | 3 Arabic words vs 2 Latin ones |
-| `شغّل npx @deepseek-ai/dsh web` | RTL | the code token binds `npx … web` into **one** unit, so 1 Arabic vs 1 Latin |
-| `راجع commit a4c1025b قبل النشر` | RTL | a bare sha does not vote |
-| `نسبة النجاح 15/15` | RTL | a ratio is neutral |
-| `افتح src/index.ts ثم عدّل الدالة` | RTL | a path does not vote |
-| `"C:\Users\…\الخطوط\thmanyahseriftext"` | untouched | a Windows path is a code token even with an Arabic folder inside |
-| `@deepseek-ai/dsh مهم جدًا` | RTL | a leading identifier is one unit |
-| `Hello نص` | RTL | a tie resolves to RTL |
-| `The build failed while parsing سلام in the file` | untouched | English prose quoting a word stays LTR |
-| `شغّل "git status"` | RTL | a quotation is **one unit**: the quoted span votes once |
-| `pre`, `code`, inline code | LTR always | code is never judged and never mirrored |
-| composer, search boxes | follows typing | RTL while Arabic dominates, otherwise native `auto` |
+| `كيف حالك Hello` | RTL | الكلمات العربية غالبَة |
+| `Hello كيف حالك` | RTL | ما زالت جملة عربية — و`dir="auto"` **يخطئ** هنا |
+| `Error: فشل الاتصال بالخادم` | RTL | الجملة عربية والبادئة ليست كذلك |
+| `npm install ثم أعد التشغيل` | RTL | ٣ كلمات عربية مقابل ٢ لاتينية |
+| `شغّل npx @deepseek-ai/dsh web` | RTL | الرمز التقني **يلصق** `npx … web` في وحدة واحدة: عربية ١ مقابل لاتينية ١ |
+| `راجع commit a4c1025b قبل النشر` | RTL | البصمة المجرّدة لا تُصوِّت |
+| `نسبة النجاح 15/15` | RTL | النسبة محايدة |
+| `افتح src/index.ts ثم عدّل الدالة` | RTL | المسار لا يُصوِّت |
+| `"C:\Users\…\الخطوط\thmanyahseriftext"` | بلا تغيير | مسار ويندوز رمز تقني ولو كان أحد مجلداته عربيًا |
+| `@deepseek-ai/dsh مهم جدًا` | RTL | المُعرِّف الواحد = وحدة واحدة |
+| `Hello نص` | RTL | التعادل يُحسم RTL |
+| `The build failed while parsing سلام in the file` | بلا تغيير | نص إنجليزي يقتبس كلمة يبقى LTR |
+| `شغّل "git status"` | RTL | الاقتباس **وحدة واحدة**: يُحتسب مرة لا مرتين |
+| `pre` و`code` والكود المضمّن | LTR دائماً | الكود لا يُحكم عليه ولا يُقلب |
+| مربّع الكتابة والبحث | يتبع ما تكتبه | RTL حين تغلب العربية، وإلا `auto` الأصلي |
 
-The four rules behind the table:
+القواعد الأربع خلف الجدول:
 
-1. **Code-like tokens do not vote** — URLs, paths (Windows backslashes included),
-   `@scope/name`, shas, `15/15`, dotted file names. One URL or sha can otherwise
-   outweigh a whole Arabic sentence, and a code token also **binds the Latin words
-   around it** into one technical unit. A path whose folder carries Arabic letters
-   is still a path: counting it as prose is what used to flip a block of paths to
-   RTL, which then re-ordered each path's own Latin runs around that Arabic word.
-2. **Words vote, not letters** — an Arabic word against a Latin word, because
-   Latin technical terms are longer in characters but fewer in words. A tie goes
-   to Arabic; a block with no Arabic word is released.
-3. **Hysteresis while streaming** — a block that is already RTL stays RTL until
-   the text is clearly Latin (twice as many Latin words), so a growing answer
-   cannot flicker between directions.
-4. **A quotation is one unit** — `"git status"` is a quoted phrase, a command, a
-   title, and votes once, not twice. `شغّل "git status"` therefore reads as the
-   Arabic sentence it is, while the same words unquoted stay LTR (see the limits
-   below). An unclosed quote — a streamed answer mid-quotation — runs to the end
-   of the text, which is the unit its closed form will produce.
+١. **الرموز الشبيهة بالكود لا تُصوِّت** — الروابط، المسارات (بما فيها شرطة ويندوز
+   المائلة الخلفية)، `@scope/name`، البصمات، `15/15`، أسماء الملفات المنقوطة؛
+   فرابط واحد أو بصمة واحدة قد ترجّح على جملة عربية كاملة، والرمز التقني **يلصق**
+   الكلمات اللاتينية حوله في وحدة تقنية واحدة. والمسار الذي يحمل مجلدًا عربيًا
+   يبقى مسارًا: احتسابه نصًّا عربيًا هو ما كان يقلب كتلة مسارات إلى RTL، فيُعاد
+   ترتيب مقاطعها اللاتينية حول تلك الكلمة.
+٢. **الكلمات هي الوحدة لا الحروف** — فالمصطلح اللاتيني أطول حروفاً وأقل كلمات.
+   والتعادل يُحسم للعربية، والكتلة التي لا كلمة عربية فيها **تُحرَّر**.
+٣. **تثبيت أثناء البثّ (hysteresis)** — الكتلة التي صارت RTL تبقى كذلك حتى يصير
+   النص لاتينياً بوضوح (ضعف عدد الكلمات العربية)، فلا يتذبذب الرد المتدرّج.
+٤. **الاقتباس وحدة واحدة** — `"git status"` نصٌّ مقتبس (أمر، عنوان، جملة) يُحتسب
+   مرة واحدة لا مرتين؛ فيُقرأ `شغّل "git status"` جملةً عربية كما هي، بينما
+   الكلمتان نفسهما بلا اقتباس تبقى LTR (انظر الحدود أدناه). وعلامة اقتباس غير
+   مغلقة — ردٌّ يتدفّق والاقتباس لم يُغلق بعد — تمتدّ إلى آخر النص، وهي الوحدة
+   نفسها التي سينتجها الاقتباس المغلق، فلا تذبذب لحظةَ الإغلاق.
 
-**Only text blocks are flipped — chrome never is.** A flex or grid container
-reorders its children when it flips, and a row that owns buttons is a toolbar:
-both are excluded, so the composer's send button keeps its side even though the
-Arabic permission label sits in that same row. The Arabic text inside such a row
-lives in its own block and is still handled.
+**كتل النص وحدها تُقلب — والهيكل لا يُقلب أبداً.** حاوية `flex` أو `grid` تُعيد
+ترتيب أبنائها عند القلب، والصف الذي يملك أزراراً هو شريط أدوات: كلاهما مُستثنى،
+فيبقى زر الإرسال في مكانه رغم أن وسم الصلاحية العربي في الصف نفسه. والنص العربي
+داخل ذلك الصف يعيش في كتلة نصية خاصة به فيُعالَج عادةً.
 
-Two shapes needed more than a plain block decision, and both are pinned by tests
-and by `data/card-pins.json`:
+وشكلان احتاجا أكثر من قرار كتلة عادية، وكلٌّ منهما مُثبَّت باختبار وبـ`data/card-pins.json`:
 
-- **a text cell CSS has blockified.** The question card the assistant uses to ask
-  a question draws each option as a flex `<button>`, and its label and description
-  are `<span>`s inside it. A genuinely inline span is part of the flow around it,
-  but a flex item is a text block of its own: each cell takes RTL, so
-  `ادفع fix/rust-flake كما هو` reads in order instead of backwards, while the row
-  keeps its number badge on the left;
-- **a content card's own `<header>`/`<footer>`.** DSH wraps the question itself in
-  a `<header>` (`header` and `footer` are landmarks of the shell, and stay chrome).
-  The card's frame carries `data-question-key` — the one app marker this layer
-  reads — so a landmark *inside* the card is the card's own part and its question
-  is content like any other paragraph. `scripts/check-card-pins.mjs <app.asar>`
-  fails, naming the difference, when a build moves that marker or stops building
-  the option row as a flex row;
-- **what does not move:** the option's number badge, and the controls themselves. A
-  row that owns a control is never flipped, and a control is never given a direction
-  of its own — a flex button would reverse its icon and label, and a centred label
-  would jump to an edge. So the number stays where the design put it, the card's
-  buttons keep their layout, and the Arabic text starts beside them: the card is not
-  mirrored, its text is.
+- **خلية نصّية جعلها CSS كتلةً.** بطاقة السؤال التي يسأل بها المساعد ترسم كل خيار
+  `button` بـ`flex`، ووسمها ووصفها `span` داخله. الـ`span` المضمّن فعلاً جزء من
+  التدفّق حوله، أما عنصر `flex` فهو كتلة نصية قائمة بذاتها: كل خلية تأخذ RTL،
+  فيُقرأ `ادفع fix/rust-flake كما هو` بترتيبه لا مقلوباً، ويبقى رقم الصف في مكانه؛
+- **`<header>`/`<footer>` بطاقة المحتوى.** DSH يضع نص السؤال داخل `<header>`
+  (و`header` و`footer` علامتان للهيكل وتبقيان LTR). وإطار البطاقة يحمل
+  `data-question-key` — وهو المُعرِّف الوحيد الذي يقرأه هذا البلاقن من التطبيق —
+  فعلامة داخل البطاقة جزء من البطاقة، وسؤالها محتوى كأي فقرة.
+  و`scripts/check-card-pins.mjs <app.asar>` يفشل مسمّياً الفرق إذا تغيّر هذا
+  المُعرِّف أو لم يعد صف الخيارات صف `flex`؛
+- **وما لا يتحرك:** رقم الخيار، وعناصر التحكّم نفسها. الصف الذي يملك زراً لا يُقلب،
+  وعنصر التحكّم لا يُمنح اتجاهاً خاصاً به — فزر `flex` يعكس ترتيب أيقونته ووسمه،
+  والوسم المتوسّط يقفز إلى حافة عند تجاوز المحاذاة. فيبقى الرقم حيث وضعه التصميم،
+  وتبقى أزرار البطاقة بتخطيطها، ويبدأ النص العربي بجانبها — البطاقة لا تُقلب، بل نصّها.
 
-![Before and after: the question card with and without the layer](https://raw.githubusercontent.com/SMSMy/dsh-arabic/main/docs/question-card.png)
+![قبل وبعد: بطاقة السؤال مع الطبقة وبدونها](https://raw.githubusercontent.com/SMSMy/dsh-arabic/main/docs/question-card.png)
 
-<sub>Rendered by Chromium with the real bidi algorithm: the same card markup and the same
-strings on both sides, with the `dir` attributes the layer writes on the right. The number
-badge stays on the left in both. Source: [docs/question-card.html](docs/question-card.html).</sub>
+<sub>مُصيَّرة بـChromium بمحرّك bidi الحقيقي: الترميز والنصوص نفسها في اللوحين، مع خصائص `dir` التي يكتبها البلاقن في اللوح الأيمن. ورقم الخيار يبقى في اليسار في الحالتين. المصدر: [docs/question-card.html](docs/question-card.html).</sub>
 
-If a block's direction is set by the app or by you (`dir="ltr"` in the markup),
-this layer never touches it: that is the escape hatch for any block the estimator
-gets wrong.
+وإذا كان اتجاه كتلة ما مضبوطاً من التطبيق أو منك (`dir="ltr"` في الترميز)، فلا
+نلمسه أبداً — وهذا هو المخرج الاحتياطي لأي كتلة يُخطئ فيها المُقدِّر.
 
-### Known limits (asserted by the tests, not hidden)
+### حدود معروفة (مُثبَّتة في الاختبارات لا مخفية)
 
-- **Bare Latin words still vote.** `شغّل git status` stays LTR: two ordinary
-  Latin words outweigh one Arabic word and there is no technical separator to
-  glue them. Quoting the command is the reader's remedy — `شغّل "git status"`
-  flips — and treating every Latin run as one unit was tried and rejected: it
-  flips English paragraphs that quote a single Arabic word.
-- **A mixed path inside Arabic prose still follows the bidi algorithm.** The block
-  is Arabic and stays RTL, and the path's Latin runs are ordered around its Arabic
-  segment. Writing the path between backticks is the reliable form — the stylesheet
-  isolates `code` left-to-right, so the path reads in its own order (verified in
-  Chromium).
-- **The sidebar terminal is not shaped.** DSH's terminal is xterm.js, which does
-  not join Arabic letters (`ا ل ع ر ب ي ة`). That is an upstream limitation; this
-  plugin documents it instead of pretending otherwise.
-- **Plural forms.** DSH's locale dictionaries are flat strings, so an Arabic
-  sentence that counts things cannot pick the right form for 1, 2, 3–10, 11+.
-  Where it matters, the copy is phrased to be number-agnostic.
-- **Chrome stays LTR — by design, not by omission.** The shell (sidebar, menus,
-  settings, tab bars) keeps its authored order; only text blocks take a direction.
-  A row that owns a control is **never marked**, and a mark is withdrawn the
-  moment its subtree gains one — including when the control mounts a level deeper
-  than the row. So an Arabic settings label reads right-to-left inside its own
-  column while the switch stays exactly where the design put it. Mirroring the
-  shell would need the app's layout to be authored with logical CSS; until then a
-  half-mirrored panel reads as broken, which is why the direction decision is
-  restricted to content. See [docs/roadmap.md](docs/roadmap.md).
+- **الكلمات اللاتينية المجرّدة تُصوِّت.** `شغّل git status` يبقى LTR: كلمتان
+  لاتينيتان عاديتان ترجّحان على كلمة عربية، ولا فاصل تقني يلصقهما. وقد جُرِّب
+  اعتبار كل تتابع لاتيني وحدة واحدة فرُفض — لأنه يقلب فقرات إنجليزية تقتبس كلمة عربية.
+  والاقتباس هو العلاج بيد القارئ: `شغّل "git status"` ينقلب.
+- **المسار المختلط داخل الجملة العربية يتبع خوارزمية bidi.** الكتلة عربية وتبقى
+  RTL، فتترتّب مقاطع المسار اللاتينية حول مقطعه العربي. وكتابة المسار داخل
+  علامتَي الكود الخلفيتين هي الصيغة الموثوقة: الورقة تعزل `code` من اليسار
+  إلى اليمين، فيُقرأ المسار بترتيبه (مُتحقَّق منه في Chromium).
+- **طرفية الشريط الجانبي لا تصل الحروف.** طرفية DSH مبنية على xterm.js ولا تصل
+  الحروف العربية (`ا ل ع ر ب ي ة`). هذا قيد في المصدر، نوثّقه ولا نتظاهر بإصلاحه.
+- **صيغ الجمع.** قواميس DSH سلاسل مسطّحة، فالجملة العربية التي تعدّ الأشياء لا
+  تستطيع اختيار الصيغة الصحيحة لـ ١ و٢ و٣–١٠ و١١+؛ وحيث يهمّ ذلك نصوغ الجملة
+  بحيث لا تتأثر بالعدد.
+- **الهيكل يبقى LTR.** القوائم والشريط الجانبي تتبع اتجاه الهيكل لا اللغة المختارة؛
+  فقلبها بالحقن يكسر تخطيطاً كُتب بخصائص CSS فيزيائية. وللسبب نفسه تُستثنى حاويات
+  `flex`/`grid` والصفوف التي تملك أزراراً من قرار الاتجاه — فيُقرأ وسم الصلاحية
+  العربي في شريط المُحرِّر من اليمين دون أن ينتقل زر الإرسال. الخطة المعتمدة تعتمد
+  المصدر أولاً — انظر [docs/roadmap.md](docs/roadmap.md).
 
-> The word-dominance approach, the "one identifier is one word" rule and the
-> idea of stripping code-like tokens before counting follow the community
-> consensus pioneered by
+> نهج هيمنة الكلمات، وقاعدة «المُعرِّف الواحد كلمة واحدة»، وفكرة حذف الرموز
+> الشبيهة بالكود قبل العدّ — كلها تتبع الإجماع المجتمعي الذي بدأه
 > [haythamat/dsh-client-ui-rtl](https://github.com/haythamat/dsh-client-ui-rtl)
-> and [kfirsch/dsh-hebrew-rtl](https://github.com/kfirsch/dsh-hebrew-rtl)
-> (both MIT); this implementation is independent, adds the composer/toggle layer
-> and the hysteresis, and is covered by its own tests.
+> و[kfirsch/dsh-hebrew-rtl](https://github.com/kfirsch/dsh-hebrew-rtl) (رخصة MIT لكلٍّ منهما)؛
+> وهذا التنفيذ مستقل، ويضيف طبقة مربّع الكتابة والمفتاح والتثبيت أثناء البثّ،
+> ومغطّى باختباراته.
 
-![Before and after: first-strong versus script dominance](https://raw.githubusercontent.com/SMSMy/dsh-arabic/main/docs/direction.png)
+![قبل وبعد: قاعدة أول حرف قوي مقابل هيمنة الكلمات](https://raw.githubusercontent.com/SMSMy/dsh-arabic/main/docs/direction.png)
 
-<sub>Rendered by Chromium with the real bidi algorithm: both columns contain the same five
-lines, each starting with a Latin token. Source: [docs/direction.html](docs/direction.html).</sub>
+<sub>مُصيَّرة بمتصفح Chromium بمحرّك bidi الحقيقي: العمودان يحملان الأسطر الخمسة نفسها، وكلٌّ منها يبدأ بمُعرِّف لاتيني. المصدر: [docs/direction.html](docs/direction.html).</sub>
 
-### 2. Arabic UI language pack
+**لا يقلب الواجهة كلها إلى RTL.** واجهات المطوّرين ثنائية اللغة بطبيعتها،
+واتجاه كل كتلة على حدة هو ما يُبقي اللغتين مقروءتين.
 
-Registered through the official locale service (`ctx.locale.addLanguage` +
-`ctx.locale.register`), which is the mechanism the app itself uses — no DOM
-string replacement, no monkey-patching:
+### ٢) حزمة تعريب الواجهة
 
-- **59 namespaces / 3,228 keys** taken from the official DSH source
-- keys we do not translate fall back to English automatically (`fallback: 'en'`)
-- pick **العربية** in *Settings → General → Language*
+مُسجَّلة عبر خدمة الترجمة الرسمية (`ctx.locale.addLanguage` + `ctx.locale.register`)
+— أي بالنفس الآلية التي يستخدمها التطبيق نفسه، بلا استبدال نصوص في DOM وبلا
+تعديل دوال قائمة:
 
-Coverage and every non-obvious translation decision are auditable in
-[`data/en-catalog.json`](data/en-catalog.json) (official English key set),
-[`locales/ar.json`](locales/ar.json) (the Arabic pack) and
-[`data/overrides.json`](data/overrides.json) (cross-batch consistency fixes).
+- **59 نطاقاً · 3,228 نصاً** مأخوذة من مصدر DSH الرسمي
+- أي مفتاح غير مترجم يعود تلقائياً إلى الإنجليزية (`fallback: 'en'`)
+- اختر **العربية** من *الإعدادات ← عام ← Language*
 
-### 3. Your choice, not ours
+التغطية وكل قرار ترجمة غير بديهي قابلة للتدقيق في
+[`data/en-catalog.json`](data/en-catalog.json) (مجموعة المفاتيح الإنجليزية الرسمية)،
+و[`locales/ar.json`](locales/ar.json) (الحزمة العربية)،
+و[`data/overrides.json`](data/overrides.json) (توحيد الصيغ بين الدفعات).
 
-Arabic is **added as an option, never forced**:
+### ٣) الخيار بيدك لا بيدنا
 
-- **Settings → General → Language** lists **العربية** next to the built-in
-  languages; the selection is stored by the app's own locale service, so a
-  reader who prefers the English interface keeps it.
-- **Settings → General → Right-to-left text direction** switches the bidi layer
-  off and on instantly and remembers the choice (`localStorage`). With it off,
-  no block is marked and no composer direction is set — the UI behaves exactly
-  as it would without the plugin.
+العربية **تُضاف كخيار ولا تُفرض أبداً**:
 
-### 4. The interface typography
+- **الإعدادات ← عام ← Language** تُدرج **العربية** بجانب اللغات المدمجة، ويحفظ
+  التطبيق اختيارك عبر خدمة اللغة الرسمية — فمن يفضّل الواجهة الإنجليزية يحتفظ بها.
+- **الإعدادات ← عام ← اتجاه النص من اليمين إلى اليسار** يُشغّل طبقة الاتجاه
+  ويوقفها فوراً ويتذكّر اختيارك (`localStorage`). عند الإيقاف لا تُوسَم أي كتلة
+  ولا يُضبط اتجاه أي خانة كتابة — تتصرّف الواجهة تماماً كما لو لم يكن البلاقن موجوداً.
 
-Three cuts of **thmanyah**, each in the role it was drawn for:
+### ٤) طباعة الواجهة
 
-| Role | Cut | Where it lands |
+ثلاث قطع من **ثمانية**، كلٌّ في الدور الذي رُسم له:
+
+| الدور | القطع | أين يظهر |
 |---|---|---|
-| Interface | **Thmanyah Sans** | the default: labels, buttons, chrome, small copy |
-| Reading | **Thmanyah Serif Text** | markdown paragraphs, list items, quotations |
-| Headings | **Thmanyah Serif Display** | `h1`–`h6` |
+| الواجهة | **ثمنية سانس** | الافتراضي: الوسوم والأزرار والهيكل والنصوص الصغيرة |
+| القراءة | **ثمنية سيريف تيكست** | فقرات الماركداون وعناصر القوائم والاقتباسات |
+| العناوين | **ثمنية سيريف ديسپلاي** | `h1`–`h6` |
 
-One declaration carries the interface role — the plugin re-declares
-`--dsw-font-family`, the variable every typography token in the app's theme
-resolves through — and two element rules carry the other two. The app's own stack
-stays behind every family in the same declaration, the code family is untouched,
-and each role goes silent if its files are missing.
+وسطر واحد يحمل دور الواجهة — البلاقن يعيد تعريف `--dsw-font-family`، المتغيّر الذي
+تمرّ منه كل رموز الطباعة في سمة التطبيق — وقاعدتان للعناصر تحملان الدورين
+الآخرين. وتبقى حزمة خطوط التطبيق خلف كل عائلة في التعريف نفسه، وخطّ الكود لا
+يُلمس، وكل دور يصمت إن غابت ملفاته.
 
-The weights live in [`fonts/`](fonts/README.md) — a subfolder of the repository,
-never its root, with both license texts — and the plugin serves them from
-`/dsh-arabic/fonts/` on the app's own web server: the Desktop shell loads its page
-from `http://127.0.0.1:<port>`, so one same-origin URL works in both shells and
-the page carries nine short `@font-face` rules instead of a megabyte of base64.
-Point `DSH_ARABIC_FONTS` at a directory laid out the same way to supply another
-copy, or at an empty one to keep the app's own stack.
+والأوزان في [`fonts/`](fonts/README.md) — **مجلد فرعي لا جذر المستودع** — ومعه
+نصّا الرخصة (والعربية هي الحاكمة)، ويخدمها البلاقن من `/dsh-arabic/fonts/` على
+خادم التطبيق نفسه: نسخة الديسكتوب تحمّل صفحتها من `http://127.0.0.1:<port>`
+فيعمل الرابط نفسه في الوجهين، وتحمل الصفحة تسع قواعد `@font-face` قصيرة بدل نحو
+ميغابايت من base64. ووجّه `DSH_ARABIC_FONTS` إلى مجلد بالبنية نفسها لتُزوّد نسخةً
+أخرى، أو إلى **مجلد فارغ** لتُبقي خط التطبيق الأصلي — الطبقة تصمت، لا تتعطّل.
 
-Nothing about the interface changes until you choose it.
+لا يتغيّر شيء في الواجهة حتى تختاره أنت.
 
-## Install
+## التثبيت
 
 ```bash
-# npm
+# من npm
 dsh plugin --profile desktop add dsh-arabic
 
-# or from a checkout (development)
-dsh plugin --profile desktop add link:/absolute/path/to/dsh-arabic
+# أو من نسخة محلية (للتطوير)
+dsh plugin --profile desktop add link:/المسار/الكامل/dsh-arabic
 ```
 
-Or install it inside the app: **Settings → Plugins → Plugin Manager**.
+أو من داخل التطبيق: **الإعدادات ← Plugins ← Plugin Manager**.
 
-> **Restart DSH after installing.** The Desktop injection table is collected
-> once at host startup, so a page refresh alone will not apply the RTL layer.
+> **أعد تشغيل DSH بعد التثبيت.** جدول الحقن في نسخة الديسكتوب يُجمَع مرة واحدة
+> عند إقلاع المضيف، فتحديث الصفحة وحده لا يكفي.
 
-Then, to use the Arabic interface: **Settings → General → Language → العربية**.
-The RTL layer is active for every language as soon as the plugin loads.
+ثم لتفعيل الواجهة العربية: **الإعدادات ← عام ← Language ← العربية**.
+طبقة RTL تعمل مع أي لغة بمجرد تحميل البلاقن.
 
-## How it works
+## كيف يعمل
 
 ```
-index.js                     host half
-  └── webserver/index-inject rows
-        ├── { kind: 'style',  text: <bidi CSS> }
-        └── { kind: 'script', placement: 'body', text: <marker script> }
+index.js                     النصف المضيف
+  └── صفوف webserver/index-inject
+        ├── { kind: 'style',  text: <CSS الاتجاه> }
+        └── { kind: 'script', placement: 'body', text: <سكربت الوسم> }
 
-lib/client.js                browser half (generated)
+lib/client.js                النصف البرمجي في المتصفح (مُولَّد)
   └── window.__ModuleLoader__.load({ id, factory })
         ├── ctx.locale.addLanguage({ id: 'ar', label: 'العربية', fallback: 'en' })
         │   ctx.locale.register(namespace, 'ar', dictionary)   × 59
         └── ctx.slots.inject('settings.general.item', …)
-            └── one Switch row → window.__dshArabic.setEnabled()
+            └── صف Switch واحد → window.__dshArabic.setEnabled()
 ```
 
-The browser half has **no top-level externals**: `react` and the primitives are
-required only when the settings seat exists, and that registration is guarded so
-a future slot change can never take the language pack down with it.
+لا اعتماديات خارجية على مستوى التحميل: `react` والمكوّنات الرسمية تُطلَب فقط عند
+وجود مقعد الإعدادات، وذاك التسجيل محروس بحيث لا يُسقط تغيير مستقبلي في المواقع
+حزمةَ اللغة معه.
 
-## Repository layout
+## بنية المستودع
 
-| Path | Purpose |
+| المسار | الغرض |
 |---|---|
-| `index.js` | host half: the RTL/bidi injection rows |
-| `lib/client.js` | generated browser half: the Arabic language pack |
-| `locales/ar.json` | the translated dictionaries |
-| `data/en-catalog.json` | official English key set extracted from the DSH sources |
-| `data/en-catalog.meta.json` | the upstream ref/commit that key set was measured against |
-| `data/glossary.yml` | machine-readable terminology (term, ar, avoid, do-not-translate) |
-| `data/overrides.json` | pinned wording where parallel batches disagreed |
-| `data/term-map.json` | term normalization applied to every value in the pipeline |
-| `data/bidi-decisions.json` | every live-status isolation, and every mixed-script value, with its reason |
-| `data/shimmer-pins.json` | the hashed class and keyframe names the activity mirror was verified against |
-| `scripts/extract-catalog.mjs` | regenerates `data/en-catalog.json` from the official upstream sources (`npm run extract`) |
-| `scripts/status.mjs` | coverage against the recorded upstream revision (`npm run status`) |
-| `scripts/build-client.mjs` | validates the pack and regenerates `lib/client.js` (`--check` for CI) |
-| `scripts/assemble-translations.mjs` | merges translation batches into `locales/ar.json` |
-| `scripts/lint-consistency.mjs` | reports the same English string translated two ways |
-| `tests/golden-direction.mjs` | 45 golden direction cases, including the code-token probes, the quoted-unit cases and the documented limits |
-| `fonts/` | the three thmanyah cuts (Sans, Serif Text, Serif Display), each 400/500/700, plus both license texts — a subfolder of the repo, never its root |
-| `docs/roadmap.md` | the three layers, the upstream asks, and the deliberate non-goals |
-| `docs/status-bidi.html` · `docs/status-final.html` | how the live status line is spelled and why, rendered in both paragraph directions |
-| `docs/shimmer-compare.html` | the activity light frozen at one instant, English next to Arabic |
-| `CHANGELOG.md` | what changed in each release, and which report drove it |
-| `scripts/check-docs.mjs` | fails when a count in the docs disagrees with the suites |
-| `scripts/check-bidi-family.mjs` | fails, naming the key, on an unrecorded live-status isolation |
-| `scripts/check-shimmer-pins.mjs` | re-verifies the activity-mirror names against an installed `app.asar` (release step) |
-| `AUDIT.md` | how the project was built: every step, command and gate result |
-| `CONTRIBUTING.md` | how to add or fix a translation, and the checks CI runs |
-| `tests/verify-rtl.mjs` | 64 behavioural checks of the bidi layer on a DOM shim |
-| `tests/verify-locales.mjs` | catalog integrity, artifact contract and registration checks |
-| `data/card-pins.json` | the question card's shape (marker, landmarks, flex row), re-verified against an installed `app.asar` (release step) |
+| `index.js` | النصف المضيف: صفوف حقن الاتجاه |
+| `lib/client.js` | النصف البرمجي المُولَّد: حزمة اللغة العربية |
+| `locales/ar.json` | القواميس المترجمة |
+| `data/en-catalog.json` | مجموعة المفاتيح الإنجليزية الرسمية المستخرجة من مصادر DSH |
+| `data/en-catalog.meta.json` | مرجع/بصمة upstream التي قيست عليها المجموعة |
+| `data/glossary.yml` | المسرد الآلي (المصطلح، العربية، ما يُتجنّب، ما لا يُترجم) |
+| `data/overrides.json` | توحيد الصيغ حيث اختلفت الدفعات المتوازية |
+| `data/term-map.json` | تطبيع المصطلحات المُطبَّق على كل قيمة في الخط |
+| `data/bidi-decisions.json` | كل عزل في عائلة سطر الحالة — وكل قيمة مختلطة — بسببها |
+| `data/shimmer-pins.json` | أسماء الفئات والـkeyframes المُجزأة التي قيست عليها مرآة الوميض |
+| `scripts/extract-catalog.mjs` | يعيد توليد `data/en-catalog.json` من المصادر الرسمية (`npm run extract`) |
+| `scripts/status.mjs` | نسبة التغطية مقابل مرجع upstream المسجَّل (`npm run status`) |
+| `scripts/build-client.mjs` | يتحقق من الحزمة ويعيد توليد `lib/client.js` (`--check` لـ CI) |
+| `scripts/assemble-translations.mjs` | يدمج دفعات الترجمة في `locales/ar.json` |
+| `scripts/lint-consistency.mjs` | يكشف ترجمة النص الإنجليزي الواحد بصيغتين |
+| `scripts/check-bidi-family.mjs` | يفشل — بتسمية المفتاح — على أي عزل غير مسجَّل في عائلة سطر الحالة |
+| `scripts/check-shimmer-pins.mjs` | يعيد التحقق من أسماء مرآة الوميض مقابل `app.asar` مثبَّت (خطوة إصدار) |
+| `tests/golden-direction.mjs` | ٤٥ نصاً ذهبياً مع الاتجاه الواجب لكلٍّ منها |
+| `fonts/` | قطع ثمنية الثلاث (سانس · سيريف تيكست · سيريف ديسپلاي) بأوزان 400/500/700 + نصّا الرخصة (العربي حاكم)، والمجلد فرعي لا جذر للمستودع |
+| `docs/roadmap.md` | الطبقات الثلاث، وطلبات المصدر، وما لا ننوي فعله |
+| `AUDIT.md` | كيف بُني المشروع: كل خطوة وأمر ونتيجة بوابة |
+| `CONTRIBUTING.md` | كيف تضيف ترجمة أو تصلحها، والفحوص التي يشغّلها CI |
+| `tests/verify-rtl.mjs` | ٦٤ اختباراً سلوكياً لطبقة الاتجاه على محاكي DOM |
+| `tests/verify-locales.mjs` | سلامة الكتالوج وعقد الملف وتسجيل اللغة |
+| `data/card-pins.json` | شكل بطاقة السؤال (المُعرِّف والعلامات وصفّ `flex`)، يُعاد التحقق منه من `app.asar` المثبَّت (خطوة إصدار) |
 
-## Development
+## التطوير
 
 ```bash
-npm test                     # direction (64) + locale (32) + golden matrix (45) + fonts (29)
-npm run check                # completeness + consistency lint + golden matrix
-npm run build                # regenerate lib/client.js
-npm run status               # coverage against the recorded upstream revision
+npm test                     # الاتجاه (64) + الترجمة (32) + المصفوفة الذهبية (45) + الخطوط (29)
+npm run check                # الاكتمال + تدقيق الاتساق + المصفوفة الذهبية
+npm run build                # إعادة توليد lib/client.js
+npm run status               # التغطية مقابل مرجع upstream المسجَّل
 ```
 
-### Keeping up with upstream
+### مواكبة التحديثات الرسمية
 
-A weekly workflow ([`.github/workflows/upstream-sync.yml`](.github/workflows/upstream-sync.yml))
-re-extracts the official key set and opens a pull request containing only the new
-keys, so drift arrives as a reviewable diff instead of a surprise:
+سير عمل أسبوعي ([`.github/workflows/upstream-sync.yml`](.github/workflows/upstream-sync.yml))
+يعيد استخراج مجموعة المفاتيح الرسمية ويفتح PR بالمفاتيح الجديدة وحدها، فيصل
+الانحراف كفرق قابل للمراجعة لا كمفاجأة:
 
 ```bash
-GITHUB_TOKEN=$(gh auth token) npm run extract   # refresh data/en-catalog.json
-node scripts/build-client.mjs --check           # list every untranslated key
-npm run status                                  # coverage + upstream revision
+GITHUB_TOKEN=$(gh auth token) npm run extract   # تحديث data/en-catalog.json
+node scripts/build-client.mjs --check           # سرد كل مفتاح غير مترجم
+npm run status                                  # التغطية + مرجع upstream
 ```
 
-Keys that are still missing fall back to English at runtime, so a partial update
-never breaks the interface. See [CONTRIBUTING.md](CONTRIBUTING.md) and the
-[roadmap](docs/roadmap.md).
+المفاتيح الناقصة تعود للإنجليزية وقت التشغيل — فتحديث جزئي لا يكسر الواجهة أبداً.
+انظر [CONTRIBUTING.md](CONTRIBUTING.md) و[خطة الطريق](docs/roadmap.md).
 
-## Compatibility
+## التوافق
 
-Built and tested against **DSH 0.2.0-rc.2** on the Desktop app and the served Web
-UI. Both surfaces use the same two documented-but-internal seams — the
-`webserver/index-inject` event and the client `locale` service — and the plugin
-degrades safely if either changes: the direction layer is wrapped so it can never
-break an index render, and the language pack simply stops registering. On the
-Desktop app the injection table is collected once at host startup, so a restart
-(not a page refresh) is what applies it.
+مُختبَر على **DSH 0.2.0-rc.2** في تطبيق الديسكتوب وواجهة الويب المخدومة. الوجهان
+يستخدمان التقاطعين الداخليين الموثّقين نفسهما — الحدث `webserver/index-inject`
+وخدمة `locale` في العميل — ويتدهور البلاقن بأمان إن تغيّر أحدهما: طبقة الاتجاه
+مُغلَّفة فلا تكسر أبداً عرض الفهرس، وحزمة اللغة تتوقف عن التسجيل فحسب. وفي نسخة
+الديسكتوب يُجمَع جدول الحقن مرة واحدة عند إقلاع المضيف، فالمطلوب **إعادة تشغيل**
+لا تحديث صفحة.
 
-**Interactions with other Arabic/RTL plugins.** This one and `dsh-client-ui-rtl`
-or `dsh-rtl-fix` both set `dir` on content blocks; installing two of them means
-they take turns and the last writer wins. The settings row in *General* turns
-this layer off, which is the clean way to combine them. Two plugins registering
-the `ar` language (`@mimateinn/dsh-i18n` does, with different coverage) will also
-fight over the same language id — pick one.
+**التفاعل مع بلاقنز عربية/RTL أخرى.** بلاقننا و`dsh-client-ui-rtl` أو
+`dsh-rtl-fix` كلاهما يضبط `dir` على كتل المحتوى؛ وتثبيت اثنين معاً يعني تناوبهما
+ويفوز آخر كاتب. مفتاح الإعدادات في «عام» يوقف طبقتنا، وهو الطريق النظيف للجمع
+بينهما. وكذلك تسجيل لغتين بالمعرّف `ar` (يفعله `@mimateinn/dsh-i18n` بتغطية
+مختلفة) سيتنازع على المعرّف نفسه — اختر واحداً.
 
-**Terminology.** `بلاقن` is a deliberate choice: it is the form Arabic-speaking
-developers use in speech, while `plugin` stays in the technical namespaces
-(package names, paths, CLI output). Prefer the Latin word in the interface? The
-dictionary is one edit away — see [CONTRIBUTING.md](CONTRIBUTING.md).
+**المصطلح.** «بلاقن» اختيار واعٍ: هي الصيغة التي يستخدمها المطوّرون العرب في
+كلامهم، بينما يبقى `plugin` في النطاقات التقنية (أسماء الحزم، المسارات، مخرجات
+الطرفية). وإن فضّلت الكلمة اللاتينية في الواجهة فالقاموس على بعد تعديل واحد —
+انظر [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Credits
+## الشكر والتوثيق
 
-- UI strings and key names come from [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) (MIT).
-- The word-dominance direction rule and the "one identifier is one word" insight follow the community consensus pioneered by [haythamat/dsh-client-ui-rtl](https://github.com/haythamat/dsh-client-ui-rtl) (MIT); this implementation is independent.
-- Arabic translations in this repository are original work, released under MIT.
+- نصوص الواجهة وأسماء المفاتيح من [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) (رخصة MIT).
+- نهج هيمنة الكلمات وقاعدة «المُعرِّف الواحد كلمة واحدة» يتبعان الإجماع المجتمعي الذي بدأه [haythamat/dsh-client-ui-rtl](https://github.com/haythamat/dsh-client-ui-rtl) (رخصة MIT)، وهذا التنفيذ مستقل.
+- الترجمات العربية في هذا المستودع عمل أصلي، منشورة تحت رخصة MIT.
 
-## License
+## الرخصة
 
-MIT — see [LICENSE](LICENSE).
+MIT — انظر [LICENSE](LICENSE).

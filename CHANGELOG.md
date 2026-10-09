@@ -43,6 +43,10 @@ Three cuts of thmanyah, and two reading rules that the bidi layer had backwards.
   already injected as an index row (that row carries no id), which with the
   embedded faces would have been a third of a megabyte duplicated in every page.
 
+Confirmed live in the Desktop app after a restart: the three cuts land on their
+roles (sans for the interface, serif text for prose, serif display for headings)
+and the quoted Windows path that used to read backwards reads in order.
+
 Suites behind this release: 64 bidi + 32 locale + **45** golden direction + **29**
 font checks (`npm test`), plus the completeness, consistency, doc-count,
 bidi-family and card/shimmer pin gates in `npm run check`.
