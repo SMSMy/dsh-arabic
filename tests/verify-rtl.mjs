@@ -225,6 +225,25 @@ inlineSpan.appendChild(text('عنوان مختلط'))
 spanHost.appendChild(inlineSpan)
 document.body.appendChild(spanHost)
 
+// Composer, as it really ships: Lexical writes dir="auto" on every paragraph, so a
+// line that opens with a Latin token or a quotation used to stay LTR even when the
+// sentence is Arabic — the reported "prompt box is still not fixed". The layer takes
+// that decision over and leaves the app's own value in place.
+const lexicalComposer = el('div')
+lexicalComposer.display = 'block'
+lexicalComposer.attributes.set('contenteditable', 'true')
+const lexicalLine = el('p')
+lexicalLine.display = 'block'
+lexicalLine.attributes.set('dir', 'auto')
+lexicalLine.appendChild(text('"npm install" ثم أعد التشغيل بعد التثبيت'))
+const lexicalEnglish = el('p')
+lexicalEnglish.display = 'block'
+lexicalEnglish.attributes.set('dir', 'auto')
+lexicalEnglish.appendChild(text('The build failed while parsing سلام in the file.'))
+lexicalComposer.appendChild(lexicalLine)
+lexicalComposer.appendChild(lexicalEnglish)
+document.body.appendChild(lexicalComposer)
+
 // Composer.
 const composer = el('textarea')
 composer.value = 'اكتب هنا بالعربية'
@@ -393,6 +412,12 @@ check(
 )
 check('an inline wrapper walks up to its block host', rtl(spanHost))
 check('composer switches to rtl for Arabic', composer.getAttribute('dir') === 'rtl', `dir=${composer.getAttribute('dir')}`)
+check('a composer line that opens with a quotation is marked over its dir="auto"',
+  lexicalLine.getAttribute(MARK) === '1' && lexicalLine.getAttribute('dir') === 'auto',
+  `mark=${lexicalLine.getAttribute(MARK)} dir=${lexicalLine.getAttribute('dir')}`)
+check('an English composer line is left to its own dir="auto"',
+  lexicalEnglish.getAttribute(MARK) === null && lexicalEnglish.getAttribute('dir') === 'auto',
+  `mark=${lexicalEnglish.getAttribute(MARK)}`)
 
 // Chrome must not flip: the toolbar keeps its order, a row owning a button is
 // left alone, and the prose block inside such a row is still given RTL.
@@ -609,6 +634,9 @@ if (window.__dshArabic) {
     await new Promise((resolve) => setTimeout(resolve, 120))
   }
   check('no direction while disabled', untouched(whileOff.block))
+  check('disabling gives the composer line back to its own dir="auto"',
+    lexicalLine.getAttribute(MARK) === null && lexicalLine.getAttribute('dir') === 'auto',
+    `mark=${lexicalLine.getAttribute(MARK)} dir=${lexicalLine.getAttribute('dir')}`)
 
   window.__dshArabic.setEnabled(true)
   check('enabling re-marks existing content', rtl(arabicFirst.block) && rtl(latinFirst.block))

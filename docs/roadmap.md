@@ -32,7 +32,7 @@ What exists today:
 - `pre`, `code`, inline code and the composer are handled explicitly.
 
 Covered by `tests/golden-direction.mjs` (45 golden strings, including the two
-documented limits) and `tests/verify-rtl.mjs` (64 DOM behaviour checks), with the
+documented limits) and `tests/verify-rtl.mjs` (67 DOM behaviour checks), with the
 question card's shape pinned in `data/card-pins.json` and re-read from an installed
 archive by `scripts/check-card-pins.mjs`.
 

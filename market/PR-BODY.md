@@ -69,7 +69,7 @@ The bright band is mirrored.
 
 **Verification (all green on 0.4.0)**
 
-- **64** bidi behaviour checks on a DOM shim — marking rules, code isolation,
+- **67** bidi behaviour checks on a DOM shim — marking rules, code isolation,
   composer direction, streamed content, disable/restore, and the chrome cases above.
 - **45** golden direction strings (`tests/golden-direction.mjs`): the direction
   each of them must get, including the quoted-unit cases, the Windows-path code

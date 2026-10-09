@@ -822,7 +822,12 @@ function dshArabicClient() {
       var marked = []
       try { marked = document.querySelectorAll('[' + MARK + ']') } catch (err) { marked = [] }
       for (var i = 0; i < marked.length; i++) {
-        try { marked[i].removeAttribute(MARK); marked[i].removeAttribute('dir') } catch (err) {}
+        try {
+          marked[i].removeAttribute(MARK)
+          // Only a dir we wrote is ours to remove: a composer line keeps the app's
+          // own auto, which is what its behaviour returns to when the layer goes off.
+          if (marked[i].getAttribute('dir') === 'rtl') marked[i].removeAttribute('dir')
+        } catch (err) {}
       }
       var inputs = []
       try { inputs = document.querySelectorAll('[' + INPUT_MARK + ']') } catch (err) { inputs = [] }

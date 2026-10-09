@@ -3,6 +3,29 @@
 Every release below is published to npm through trusted publishing (OIDC) with a
 provenance attestation, and every one carries the suite results it was cut from.
 
+## 0.4.1
+
+The composer's own paragraphs carry a direction the app wrote: Lexical puts
+`dir="auto"` on every one of them, and `auto` means "browser, decide by the first
+strong character". So a line that opened with a Latin token or a quotation —
+`"npm install" ثم أعد التشغيل` — stayed left-to-right and left-aligned although the
+sentence is Arabic, which is what the report showed and what the earlier
+"quotation" fix could not reach: that one decided whole blocks, and the composer
+keeps its own value that this layer had been told never to touch.
+
+`auto` is not an authored direction, it is a delegation — and this layer exists to
+decide better than the first strong character. Inside a `contenteditable` the
+estimator now takes that decision over: the marker's `direction`/`unicode-bidi`
+beat the attribute, which is only a presentational hint, and the app's own value
+is left exactly where it was, so restoring the original or switching the layer off
+gives the line back untouched. Nothing else changes: a paragraph that is Arabic
+already was RTL, and an English paragraph in the same composer stays as it is.
+
+Measured in a real browser against a running web session (Arabic UI): a line
+typed as `"npm install" ثم أعد التشغيل بعد التثبيت` reports
+`dir="auto"` (the app's, kept), our marker set, `direction: rtl`,
+`unicode-bidi: isolate`, `text-align: start`.
+
 ## 0.4.0
 
 Three cuts of thmanyah, and two reading rules that the bidi layer had backwards.

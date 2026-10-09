@@ -1,6 +1,6 @@
 {
   "name": "dsh-arabic",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": false,
   "description": "Arabic experience for DeepSeek Harness: bidi-safe RTL rendering for mixed Arabic/English content plus a full Arabic UI language pack registered through the official locale service.",
   "type": "module",

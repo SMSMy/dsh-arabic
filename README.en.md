@@ -260,14 +260,14 @@ a future slot change can never take the language pack down with it.
 | `scripts/check-shimmer-pins.mjs` | re-verifies the activity-mirror names against an installed `app.asar` (release step) |
 | `AUDIT.md` | how the project was built: every step, command and gate result |
 | `CONTRIBUTING.md` | how to add or fix a translation, and the checks CI runs |
-| `tests/verify-rtl.mjs` | 64 behavioural checks of the bidi layer on a DOM shim |
+| `tests/verify-rtl.mjs` | 67 behavioural checks of the bidi layer on a DOM shim |
 | `tests/verify-locales.mjs` | catalog integrity, artifact contract and registration checks |
 | `data/card-pins.json` | the question card's shape (marker, landmarks, flex row), re-verified against an installed `app.asar` (release step) |
 
 ## Development
 
 ```bash
-npm test                     # direction (64) + locale (32) + golden matrix (45) + fonts (29)
+npm test                     # direction (67) + locale (32) + golden matrix (45) + fonts (29)
 npm run check                # completeness + consistency lint + golden matrix
 npm run build                # regenerate lib/client.js
 npm run status               # coverage against the recorded upstream revision
