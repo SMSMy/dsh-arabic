@@ -712,6 +712,20 @@ function dshArabicClient() {
      * is left alone: that is the opt-out for any block this estimator gets
      * wrong.
      */
+    /**
+     * Is this element inside a surface the reader types into? The composer is a
+     * Lexical contenteditable whose every paragraph carries `dir="auto"` — the one
+     * app-set direction that is not an authored direction but a delegation to the
+     * browser's first-strong rule, which is precisely the rule this layer replaces.
+     */
+    function inEditable(el) {
+      try {
+        return !!(el.closest && el.closest('[contenteditable]'))
+      } catch (err) {
+        return false
+      }
+    }
+
     function reconcile(el, info) {
       if (!enabled || !el || el.nodeType !== 1) return
       var ours = el.getAttribute(MARK) === '1'
@@ -723,20 +737,28 @@ function dshArabicClient() {
         // toggle). A `dir` the app set is untouched, as always.
         if (ours) {
           el.removeAttribute(MARK)
-          el.removeAttribute('dir')
+          if (el.getAttribute('dir') === 'rtl') el.removeAttribute('dir')
         }
         return
       }
-      if (el.getAttribute('dir') && !ours) return
+      var dir = el.getAttribute('dir')
+      // An authored direction is the opt-out and stays untouched. `auto` is not an
+      // authored direction — it hands the decision to the browser's first-strong
+      // rule — so inside the composer (Lexical writes `auto` on every paragraph),
+      // the estimator takes that decision over: the marker's stylesheet beats the
+      // attribute, which is only a presentational hint.
+      if (dir && !ours && !(dir === 'auto' && inEditable(el))) return
       var facts = info || blockInfo(el)
       // No Arabic anywhere in the block releases it without weighing the text.
       var want = facts.hasRtl && isRtlDominant(facts.text, ours)
       if (want && !ours) {
         el.setAttribute(MARK, '1')
-        el.setAttribute('dir', 'rtl')
+        // `auto` stays where it is: our `direction`/`unicode-bidi` win over the
+        // hint, so the app's own value is intact the moment the mark is withdrawn.
+        if (dir !== 'auto') el.setAttribute('dir', 'rtl')
       } else if (!want && ours) {
         el.removeAttribute(MARK)
-        el.removeAttribute('dir')
+        if (el.getAttribute('dir') === 'rtl') el.removeAttribute('dir')
       }
     }
 
