@@ -54,12 +54,14 @@ const check = (id, claim, ok, evidence) => {
     "ci.yml: lint + docs steps, '20','22','24', npm ci")
 }
 
-/* 4 — a separator alone no longer makes a token technical */
+/* 4 — a separator alone no longer makes a token technical, and the separator
+       class now carries the Windows backslash: a path through an Arabic folder
+       name is still one technical token, not Arabic prose */
 {
   const idx = read('index.js')
   check('4', 'CODEISH needs a word character on both sides of the separator',
-    idx.includes('\\S*[\\w][._/:+@#][\\w]\\S*'),
-    'index.js CODEISH narrowed; five golden probes assert the mechanism')
+    idx.includes('\\S*[\\w][._/:+@#\\\\]+[\\w]\\S*'),
+    'index.js CODEISH narrowed; backslash is a separator; golden probes assert the mechanism')
 }
 
 /* 5 — only text-like fields take a direction */
@@ -153,7 +155,7 @@ const check = (id, claim, ok, evidence) => {
 /* governance extras */
 {
   const pkg = JSON.parse(read('package.json'))
-  const readme = read('README.md')
+  const readme = read('README.en.md')
   check('+', 'governance extras landed',
     pkg.engines?.node === '>=20' && pkg.scripts.check.includes('check-docs') && existsSync(join(ROOT, 'CHANGELOG.md')) && readme.includes('shimmer-compare.html'),
     'engines.node, npm run check runs the doc guard, CHANGELOG.md exists, orphan docs indexed')
