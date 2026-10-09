@@ -1,6 +1,6 @@
 # dsh-arabic
 
-**Arabic for DeepSeek Harness — proper bidi/RTL rendering plus a full Arabic UI language pack.**
+**Arabic for DeepSeek Harness — proper bidi/RTL rendering, a full Arabic UI language pack, and thmanyah's serif as the interface font.**
 
 [![CI](https://github.com/SMSMy/dsh-arabic/actions/workflows/ci.yml/badge.svg)](https://github.com/SMSMy/dsh-arabic/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/dsh-arabic)](https://www.npmjs.com/package/dsh-arabic)
@@ -28,24 +28,33 @@ as *one* word rather than three:
 | `راجع commit a4c1025b قبل النشر` | RTL | a bare sha does not vote |
 | `نسبة النجاح 15/15` | RTL | a ratio is neutral |
 | `افتح src/index.ts ثم عدّل الدالة` | RTL | a path does not vote |
+| `"C:\Users\…\الخطوط\thmanyahseriftext"` | untouched | a Windows path is a code token even with an Arabic folder inside |
 | `@deepseek-ai/dsh مهم جدًا` | RTL | a leading identifier is one unit |
 | `Hello نص` | RTL | a tie resolves to RTL |
 | `The build failed while parsing سلام in the file` | untouched | English prose quoting a word stays LTR |
+| `شغّل "git status"` | RTL | a quotation is **one unit**: the quoted span votes once |
 | `pre`, `code`, inline code | LTR always | code is never judged and never mirrored |
 | composer, search boxes | follows typing | RTL while Arabic dominates, otherwise native `auto` |
 
-The three rules behind the table:
+The four rules behind the table:
 
-1. **Code-like tokens do not vote** — URLs, paths, `@scope/name`, shas, `15/15`,
-   dotted file names. One URL or sha can otherwise outweigh a whole Arabic
-   sentence, and a code token also **binds the Latin words around it** into one
-   technical unit.
+1. **Code-like tokens do not vote** — URLs, paths (Windows backslashes included),
+   `@scope/name`, shas, `15/15`, dotted file names. One URL or sha can otherwise
+   outweigh a whole Arabic sentence, and a code token also **binds the Latin words
+   around it** into one technical unit. A path whose folder carries Arabic letters
+   is still a path: counting it as prose is what used to flip a block of paths to
+   RTL, which then re-ordered each path's own Latin runs around that Arabic word.
 2. **Words vote, not letters** — an Arabic word against a Latin word, because
    Latin technical terms are longer in characters but fewer in words. A tie goes
    to Arabic; a block with no Arabic word is released.
 3. **Hysteresis while streaming** — a block that is already RTL stays RTL until
    the text is clearly Latin (twice as many Latin words), so a growing answer
    cannot flicker between directions.
+4. **A quotation is one unit** — `"git status"` is a quoted phrase, a command, a
+   title, and votes once, not twice. `شغّل "git status"` therefore reads as the
+   Arabic sentence it is, while the same words unquoted stay LTR (see the limits
+   below). An unclosed quote — a streamed answer mid-quotation — runs to the end
+   of the text, which is the unit its closed form will produce.
 
 **Only text blocks are flipped — chrome never is.** A flex or grid container
 reorders its children when it flips, and a row that owns buttons is a toolbar:
@@ -90,8 +99,14 @@ gets wrong.
 
 - **Bare Latin words still vote.** `شغّل git status` stays LTR: two ordinary
   Latin words outweigh one Arabic word and there is no technical separator to
-  glue them. Treating every Latin run as one unit was tried and rejected — it
+  glue them. Quoting the command is the reader's remedy — `شغّل "git status"`
+  flips — and treating every Latin run as one unit was tried and rejected: it
   flips English paragraphs that quote a single Arabic word.
+- **A mixed path inside Arabic prose still follows the bidi algorithm.** The block
+  is Arabic and stays RTL, and the path's Latin runs are ordered around its Arabic
+  segment. Writing the path between backticks is the reliable form — the stylesheet
+  isolates `code` left-to-right, so the path reads in its own order (verified in
+  Chromium).
 - **The sidebar terminal is not shaped.** DSH's terminal is xterm.js, which does
   not join Arabic letters (`ا ل ع ر ب ي ة`). That is an upstream limitation; this
   plugin documents it instead of pretending otherwise.
@@ -147,6 +162,30 @@ Arabic is **added as an option, never forced**:
   off and on instantly and remembers the choice (`localStorage`). With it off,
   no block is marked and no composer direction is set — the UI behaves exactly
   as it would without the plugin.
+
+### 4. The interface typography
+
+Three cuts of **thmanyah**, each in the role it was drawn for:
+
+| Role | Cut | Where it lands |
+|---|---|---|
+| Interface | **Thmanyah Sans** | the default: labels, buttons, chrome, small copy |
+| Reading | **Thmanyah Serif Text** | markdown paragraphs, list items, quotations |
+| Headings | **Thmanyah Serif Display** | `h1`–`h6` |
+
+One declaration carries the interface role — the plugin re-declares
+`--dsw-font-family`, the variable every typography token in the app's theme
+resolves through — and two element rules carry the other two. The app's own stack
+stays behind every family in the same declaration, the code family is untouched,
+and each role goes silent if its files are missing.
+
+The weights live in [`fonts/`](fonts/README.md) — a subfolder of the repository,
+never its root, with both license texts — and the plugin serves them from
+`/dsh-arabic/fonts/` on the app's own web server: the Desktop shell loads its page
+from `http://127.0.0.1:<port>`, so one same-origin URL works in both shells and
+the page carries nine short `@font-face` rules instead of a megabyte of base64.
+Point `DSH_ARABIC_FONTS` at a directory laid out the same way to supply another
+copy, or at an empty one to keep the app's own stack.
 
 Nothing about the interface changes until you choose it.
 
@@ -207,7 +246,8 @@ a future slot change can never take the language pack down with it.
 | `scripts/build-client.mjs` | validates the pack and regenerates `lib/client.js` (`--check` for CI) |
 | `scripts/assemble-translations.mjs` | merges translation batches into `locales/ar.json` |
 | `scripts/lint-consistency.mjs` | reports the same English string translated two ways |
-| `tests/golden-direction.mjs` | 30 golden direction cases, including five that pin what counts as a code token |
+| `tests/golden-direction.mjs` | 45 golden direction cases, including the code-token probes, the quoted-unit cases and the documented limits |
+| `fonts/` | the three thmanyah cuts (Sans, Serif Text, Serif Display), each 400/500/700, plus both license texts — a subfolder of the repo, never its root |
 | `docs/roadmap.md` | the three layers, the upstream asks, and the deliberate non-goals |
 | `docs/status-bidi.html` · `docs/status-final.html` | how the live status line is spelled and why, rendered in both paragraph directions |
 | `docs/shimmer-compare.html` | the activity light frozen at one instant, English next to Arabic |
@@ -217,14 +257,14 @@ a future slot change can never take the language pack down with it.
 | `scripts/check-shimmer-pins.mjs` | re-verifies the activity-mirror names against an installed `app.asar` (release step) |
 | `AUDIT.md` | how the project was built: every step, command and gate result |
 | `CONTRIBUTING.md` | how to add or fix a translation, and the checks CI runs |
-| `tests/verify-rtl.mjs` | 63 behavioural checks of the bidi layer on a DOM shim |
+| `tests/verify-rtl.mjs` | 64 behavioural checks of the bidi layer on a DOM shim |
 | `tests/verify-locales.mjs` | catalog integrity, artifact contract and registration checks |
 | `data/card-pins.json` | the question card's shape (marker, landmarks, flex row), re-verified against an installed `app.asar` (release step) |
 
 ## Development
 
 ```bash
-npm test                     # direction (63) + locale (32) + golden matrix (30)
+npm test                     # direction (64) + locale (32) + golden matrix (45) + fonts (29)
 npm run check                # completeness + consistency lint + golden matrix
 npm run build                # regenerate lib/client.js
 npm run status               # coverage against the recorded upstream revision

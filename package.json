@@ -1,6 +1,6 @@
 {
   "name": "dsh-arabic",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "private": false,
   "description": "Arabic experience for DeepSeek Harness: bidi-safe RTL rendering for mixed Arabic/English content plus a full Arabic UI language pack registered through the official locale service.",
   "type": "module",
@@ -11,13 +11,14 @@
     "./package.json": "./package.json"
   },
   "files": [
+    "LICENSE",
+    "README.ar.md",
+    "README.md",
+    "cordis.patch.yml",
+    "fonts",
     "index.js",
     "lib",
-    "locales",
-    "cordis.patch.yml",
-    "README.md",
-    "README.ar.md",
-    "LICENSE"
+    "locales"
   ],
   "license": "MIT",
   "dsh": {
@@ -40,7 +41,7 @@
   ],
   "scripts": {
     "build": "node scripts/build-client.mjs",
-    "test": "node tests/verify-rtl.mjs && node tests/verify-locales.mjs && node tests/golden-direction.mjs",
+    "test": "node tests/verify-rtl.mjs && node tests/verify-locales.mjs && node tests/golden-direction.mjs && node tests/verify-fonts.mjs",
     "extract": "node scripts/extract-catalog.mjs",
     "assemble": "node scripts/assemble-translations.mjs --from translations",
     "lint": "node scripts/lint-consistency.mjs --strict",

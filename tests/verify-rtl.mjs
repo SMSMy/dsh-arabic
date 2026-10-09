@@ -344,6 +344,19 @@ const styleRow = rows.find((r) => r.kind === 'style')
 const scriptRow = rows.find((r) => r.kind === 'script')
 if (!styleRow || !scriptRow) throw new Error('expected one style row and one script row')
 
+// The host injects the same stylesheet as an index row — a bare <style> with no
+// id — so the page already carries it before the browser half runs. This fixture
+// is that row: the layer must recognize it instead of appending a second copy
+// (with the embedded faces, a second copy is a third of a megabyte duplicated).
+const cssLiteral = scriptRow.text.slice(
+  scriptRow.text.indexOf('window.__dshArabicCss=') + 'window.__dshArabicCss='.length,
+  scriptRow.text.indexOf(';(')
+)
+const injectedCss = JSON.parse(cssLiteral)
+const injectedRow = el('style')
+injectedRow.appendChild(text(injectedCss))
+document.body.appendChild(injectedRow)
+
 // The payload swallows its own errors by design; surface them while testing.
 const instrumented = scriptRow.text.replace(/catch \(err\) \{\}/g, 'catch (err) { globalThis.__dshArabicError = err }')
 new Function(instrumented)()
@@ -397,7 +410,13 @@ check('the option text column itself is left to inherit', untouched(optionCopy) 
 check('a blockified cell with no Arabic is untouched', untouched(optionNumber), `dir=${optionNumber.getAttribute('dir')}`)
 check('a control in the card keeps its own layout', untouched(cardAction), `dir=${cardAction.getAttribute('dir')}`)
 
-check('style element injected', document.getElementById('dsh-arabic-style') !== null)
+check('the injected index row is recognized, not duplicated', document.getElementById('dsh-arabic-style') === null)
+check(
+  'the stylesheet is present exactly once',
+  document.body.childNodes.filter((n) => n.nodeType === 1 && n.tagName === 'STYLE').length === 1 &&
+    document.getElementById('dsh-arabic-style') === null,
+  'style elements in the fixture: ' + document.body.childNodes.filter((n) => n.nodeType === 1 && n.tagName === 'STYLE').length
+)
 check('CSS keeps code LTR', styleRow.text.includes('direction: ltr'))
 check('CSS mirrors the activity shimmer for Arabic', /html:lang\(ar\)[^{]*\bsweep\b/.test(styleRow.text) && /dsh-arabic-shimmer-sweep/.test(styleRow.text))
 check('the mirror also matches the hashed class the shipped build renders', /\[class\*="_sweep_"\]/.test(styleRow.text) && /\[class\*="_highlight_"\]/.test(styleRow.text), 'CSS modules are renamed at build time: the app ships _sweep_1rdzk_34, not .sweep')

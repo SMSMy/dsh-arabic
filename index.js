@@ -29,11 +29,167 @@
  * lose them — and a restart (not a page refresh) is what makes them appear.
  */
 
+import { readFileSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+/* ------------------------------------------------------------------ fonts ---
+ * Typography, in the three roles the family itself is cut for:
+ *
+ *   Sans        the interface default — labels, buttons, chrome, small copy.
+ *   Serif Text  long-form reading — markdown paragraphs, list items, quotations.
+ *   Display     headings (h1–h6), where a headline face belongs.
+ *
+ * All three are thmanyah's, shipped unmodified under fonts/ with both license
+ * texts (see fonts/README.md), and served by this plugin: a prefix route on the
+ * app's own web server, because the Desktop shell loads its page from
+ * `http://127.0.0.1:<port>` — its host hands Electron an authenticated URL plus
+ * the index injection rows — so a same-origin font URL works in both shells and
+ * the page carries nine short @font-face rules instead of a megabyte of base64.
+ * A deployment without that server leaves the rules pointing at a 404 and the
+ * browser falls through to the app's own stack behind every family.
+ *
+ * The families are applied by re-declaring `--dsw-font-family`, the single
+ * variable every typography token in the app's theme resolves through, plus one
+ * element rule for each of the other two roles. `--ds-font-family-code` is
+ * deliberately untouched: code stays monospace, the way it stays LTR.
+ */
+const PLUGIN_ROOT = dirname(fileURLToPath(import.meta.url))
+/** Prefix the faces are served under; versioned so a release never serves stale bytes. */
+const VERSION = (() => {
+  try {
+    return JSON.parse(readFileSync(join(PLUGIN_ROOT, 'package.json'), 'utf8')).version || '0'
+  } catch (err) {
+    return '0'
+  }
+})()
+const FONT_ROUTE = '/dsh-arabic/fonts'
+const FONT_URL = FONT_ROUTE + '/v' + VERSION
+/**
+ * Where the three folders live. An explicit DSH_ARABIC_FONTS replaces the whole
+ * search — pointing it at an empty directory is how "no font at all" is pinned,
+ * by the suite and by a reader who wants the app's own stack back.
+ */
+const FONT_ROOT = process.env.DSH_ARABIC_FONTS || join(PLUGIN_ROOT, 'fonts')
+const FONT_WEIGHTS = [['Regular', 400], ['Medium', 500], ['Bold', 700]]
+const FONT_FAMILIES = [
+  { id: 'sans', name: 'Thmanyah Sans', folder: 'thmanyahsans', variable: '--dsh-arabic-sans' },
+  { id: 'text', name: 'Thmanyah Serif Text', folder: 'thmanyahseriftext', variable: '--dsh-arabic-serif-text' },
+  { id: 'display', name: 'Thmanyah Serif Display', folder: 'thmanyahserifdisplay', variable: '--dsh-arabic-display' }
+]
+/** The app's own stack, kept behind every family so a missing glyph still lands. */
+const FONT_FALLBACK = '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
+
+/** Every weight actually present, resolved once: the route and the stylesheet share the list. */
+function listFaces() {
+  const faces = []
+  for (const family of FONT_FAMILIES) {
+    for (const [weightName, weight] of FONT_WEIGHTS) {
+      const file = family.folder + '-' + weightName + '.woff2'
+      const at = join(FONT_ROOT, family.folder, file)
+      let size = 0
+      try {
+        size = readFileSync(at).length
+      } catch (err) {
+        continue
+      }
+      if (!size) continue
+      faces.push({ family, file, weight, weightName, at, url: FONT_URL + '/' + family.folder + '/' + file })
+    }
+  }
+  return faces
+}
+
+const FONT_FACES = listFaces()
+/** Served pathname → the one file it may read. This map is the whole whitelist. */
+const FONT_FILES = new Map(FONT_FACES.map((face) => [new URL(face.url, 'http://x').pathname, face.at]))
+
+/**
+ * Serve one font file from the whitelist above. Nothing is parsed out of the
+ * request, so no request can reach a file that is not a declared face; a method
+ * that is not GET/HEAD, an unknown path and a vanished file are all answered
+ * without throwing into the server.
+ */
+function serveFont(req, res) {
+  try {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      res.writeHead(405)
+      res.end()
+      return
+    }
+    const pathname = new URL(String(req.url || '/'), 'http://x').pathname
+    const file = FONT_FILES.get(pathname)
+    if (!file) {
+      res.writeHead(404)
+      res.end()
+      return
+    }
+    const body = readFileSync(file)
+    res.writeHead(200, {
+      'content-type': 'font/woff2',
+      'content-length': body.length,
+      'cache-control': 'public, max-age=31536000, immutable'
+    })
+    res.end(req.method === 'HEAD' ? undefined : body)
+  } catch (err) {
+    try {
+      res.writeHead(404)
+      res.end()
+    } catch (inner) {}
+  }
+}
+
+const FONT_CSS = FONT_FACES.length === 0 ? '' : (() => {
+  const families = FONT_FAMILIES.filter((family) => FONT_FACES.some((face) => face.family === family))
+  const lines = ['/* dsh-arabic — thmanyah typography, in three roles. See fonts/README.md. */']
+  for (const face of FONT_FACES) {
+    lines.push('@font-face {')
+    lines.push("  font-family: '" + face.family.name + "';")
+    lines.push('  font-style: normal;')
+    lines.push('  font-weight: ' + face.weight + ';')
+    lines.push('  font-display: swap;')
+    lines.push('  src: url(' + face.url + ") format('woff2');")
+    lines.push('}')
+  }
+  lines.push('')
+  lines.push('/* One harness for all three roles: the app resolves every typography token')
+  lines.push('   through --dsw-font-family, and the two role variables carry the reading and')
+  lines.push('   the heading cut. Two selectors because the app declares the base variable on')
+  lines.push('   :root and the desktop shell re-declares it on body; html:root outranks the')
+  lines.push('   first and the body selector the second, neither depending on stylesheet')
+  lines.push("   order (this row is injected before the app's own CSS). */")
+  lines.push('html:root,')
+  lines.push('html:root body {')
+  for (const family of families) {
+    lines.push('  ' + family.variable + ": '" + family.name + "', " + FONT_FALLBACK + ';')
+  }
+  const base = families.find((family) => family.id === 'sans') || families[0]
+  lines.push('  --dsw-font-family: var(' + base.variable + ');')
+  lines.push('}')
+  if (families.some((family) => family.id === 'text')) {
+    lines.push('')
+    lines.push('/* Long-form reading: markdown paragraphs, list items and quotations. */')
+    lines.push('html:root :is(p, li, blockquote, dd) {')
+    lines.push('  font-family: var(--dsh-arabic-serif-text);')
+    lines.push('}')
+  }
+  if (families.some((family) => family.id === 'display')) {
+    lines.push('')
+    lines.push('/* Headings wear the display cut. */')
+    lines.push('html:root :is(h1, h2, h3, h4, h5, h6) {')
+    lines.push('  font-family: var(--dsh-arabic-display);')
+    lines.push('}')
+  }
+  lines.push('')
+  return lines.join('\n')
+})()
+
 const MARK = 'data-dsh-arabic-bidi'
 const STYLE_MARK = 'dsh-arabic'
 const INSTALL_FLAG = '__dshArabicInstalled'
 
-const CSS = `
+const DIRECTION_CSS = `
 /* dsh-arabic — direction is decided per block by prose dominance, not by the
    first strong character. The marker attribute means "we set the direction";
    direction and unicode-bidi are declared here as well as written as the dir
@@ -129,13 +285,57 @@ function dshArabicClient() {
   var RTL_CHAR = /[\u0590-\u05FF\u0600-\u06FF\u0700-\u074F\u0750-\u077F\u0780-\u07BF\u07C0-\u07FF\u0800-\u083F\u08A0-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/
   /** Strong left-to-right letters, used only to weigh against RTL. */
   var LATIN_CHAR = /\p{Script=Latin}/u
-  /**
-   * Word separator: whitespace only, deliberately not punctuation. Splitting on
-   * non-letters breaks identifiers into their parts, so `@deepseek-ai/dsh` would
-   * count as three Latin words and could outvote the Arabic sentence holding it.
-   * One identifier is one word.
+/**
+   * Unit splitter. Whitespace separates — punctuation deliberately does not, so
+   * `@deepseek-ai/dsh` stays one word instead of three — but a double-quoted
+   * span is one unit regardless of what is inside it:
+   *
+   *   git status     two Latin words
+   *   "git status"   one quotation — a phrase, a command, a title
+   *
+   * A quotation is an object inside the sentence, so counting its words
+   * separately is what left `شغّل "git status"` LTR (two Latin words against one
+   * Arabic word) although the sentence around it is Arabic. Following the quote
+   * is also what the reader sees: the marks travel with the text between them.
+   *
+   * An unclosed quote — a streamed answer, mid-quotation — runs to the end of the
+   * text, which is the unit its closed form will produce, so nothing flickers
+   * when the closing mark arrives. A unit that is only \`""\` votes for nothing.
    */
   var SEPARATOR = /\s+/u
+
+  function units(text) {
+    var out = []
+    var value = String(text == null ? '' : text)
+    var current = ''
+    var quoted = false
+    for (var i = 0; i < value.length; i++) {
+      var ch = value.charAt(i)
+      if (ch === '"') {
+        current += ch
+        if (quoted) {
+          out.push(current)
+          current = ''
+          quoted = false
+        } else {
+          quoted = true
+        }
+        continue
+      }
+      if (!quoted && SEPARATOR.test(ch)) {
+        SEPARATOR.lastIndex = 0
+        if (current) {
+          out.push(current)
+          current = ''
+        }
+        continue
+      }
+      current += ch
+    }
+    SEPARATOR.lastIndex = 0
+    if (current) out.push(current)
+    return out
+  }
   /** Elements whose direction is meaningful as authored — never touched. */
   var SKIP = {
     CODE: 1, PRE: 1, KBD: 1, SAMP: 1, VAR: 1, TT: 1,
@@ -214,11 +414,27 @@ function dshArabicClient() {
     var enabled = true
     try { enabled = window.localStorage.getItem(STORE_KEY) !== 'off' } catch (err) {}
 
+    /**
+     * The host injects this same stylesheet as an index row — a bare <style> with
+     * no id of its own — so a style element carrying exactly this text *is* the
+     * stylesheet, and a second copy must not be pasted over it: with the embedded
+     * faces that copy would be a third of a megabyte duplicated in every page.
+     * Anywhere else (a static deployment that dropped the row, a test, a page
+     * assembled by hand) the layer still installs its own copy, which is what
+     * keeps the row optional.
+     */
     function ensureStyle() {
+      var css = window.__dshArabicCss || ''
+      try {
+        var present = document.querySelectorAll('style')
+        for (var i = 0; i < present.length; i++) {
+          if (present[i].textContent === css) return
+        }
+      } catch (err) {}
       if (document.getElementById(STYLE_ID)) return
       var style = document.createElement('style')
       style.id = STYLE_ID
-      style.textContent = window.__dshArabicCss || ''
+      style.textContent = css
       ;(document.head || document.documentElement).appendChild(style)
     }
 
@@ -245,7 +461,7 @@ function dshArabicClient() {
      * be read as code, stop voting, and glue the Latin words after it into a unit
      * they do not belong to. The behaviour is pinned in the golden matrix.
      */
-    var CODEISH = /https?:\/\/\S+|\S*[\w][._/:+@#][\w]\S*|\b[0-9a-f]{6,}\b|\b\d+\/\d+\b|\b[\w-]+\.[\w-]{2,}\b/g
+    var CODEISH = /https?:\/\/\S+|\S*[\w][._/:+@#\\]+[\w]\S*|\b[0-9a-f]{6,}\b|\b\d+\/\d+\b|\b[\w-]+\.[\w-]{2,}\b/g
 
     /** True when one whitespace token looks like code, a path, a URL or a sha. */
     function isCodeish(token) {
@@ -256,11 +472,14 @@ function dshArabicClient() {
     /**
      * Weigh a block's prose: code-like tokens do not vote, words do.
      *
-     * - Unit: one whitespace-delimited token.
+     * - Unit: one whitespace-delimited token — or one double-quoted span, which
+     *   is a single object however many words it holds (see units()).
      * - A token holding any RTL character is an Arabic word; otherwise a token
      *   holding a Latin letter is a Latin word; a token with neither (numbers,
      *   punctuation) counts as neither.
-     * - A code-like token votes for nothing, and it makes the Latin word that
+     * - A code-like token votes for nothing — **including one that carries Arabic
+     *   letters**, such as a Windows path through an Arabic folder name, which is a
+     *   path and not Arabic prose — and it makes the Latin word that
      *   follows it part of the same technical unit, so `npx @deepseek-ai/dsh web`
      *   is one unit instead of three. The flag is set by the code token alone:
      *   two ordinary Latin words side by side still count twice, or an English
@@ -272,18 +491,22 @@ function dshArabicClient() {
     function weigh(text) {
       var out = { rtl: 0, ltr: 0 }
       if (!text) return out
-      var tokens = String(text).split(SEPARATOR)
+      var tokens = units(text)
       var glued = false
       for (var i = 0; i < tokens.length; i++) {
         var token = tokens[i]
         if (!token) continue
+        // Code first: a path or URL that happens to carry an Arabic folder name
+        // is one technical token, not an Arabic word — and counting it as prose is
+        // what flipped a block of pure paths to RTL, which then re-ordered each
+        // path's own Latin runs around that word. A block of paths stays LTR.
+        if (isCodeish(token)) {
+          glued = true
+          continue
+        }
         if (RTL_CHAR.test(token)) {
           out.rtl++
           glued = false
-          continue
-        }
-        if (isCodeish(token)) {
-          glued = true
           continue
         }
         if (LATIN_CHAR.test(token)) {
@@ -712,6 +935,9 @@ function dshArabicClient() {
   } catch (err) {}
 }
 
+/** The injected stylesheet: the font layer first, then the direction layer. */
+const CSS = FONT_CSS + DIRECTION_CSS
+
 const CLIENT_TEXT = 'window.__dshArabicCss=' + JSON.stringify(CSS) + ';(' + dshArabicClient.toString() + ')();'
 
 export default {
@@ -734,7 +960,23 @@ export default {
         // Never break an index render because of this plugin.
       }
     })
+
+    /* The faces are served, not inlined. `inject` waits for the service, so a
+       composition without a web server never registers this route and the
+       stylesheet's font URLs fall through to the app's own stack. */
+    if (FONT_FACES.length && typeof root.inject === 'function') {
+      try {
+        root.inject(['webServer'], (webCtx) => {
+          webCtx.effect(
+            () => webCtx.webServer.register({ kind: 'prefix', path: FONT_ROUTE, handler: serveFont }),
+            'dsh-arabic: font route'
+          )
+        })
+      } catch (err) {
+        // A composition without the service keeps the app's own stack; never throw.
+      }
+    }
   }
 }
 
-export { CSS, MARK, STYLE_MARK }
+export { CSS, MARK, STYLE_MARK, FONT_ROUTE, FONT_FACES, FONT_FAMILIES, serveFont }

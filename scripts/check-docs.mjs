@@ -52,7 +52,9 @@ const walk = (dir) => {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     // agent-kit is a local, gitignored doctrine folder — it is not this project's
     // documentation and its prose is none of this check's business.
-    if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'translations' || entry.name === 'agent-kit') continue
+    // Scratch and tooling trees hold drafts and old tarballs, not this project's
+    // documentation: .tmp is gitignored working space, .cache is extraction output.
+    if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'translations' || entry.name === 'agent-kit' || entry.name === '.tmp' || entry.name === '.cache') continue
     const full = join(dir, entry.name)
     if (entry.isDirectory()) walk(full)
     else if (entry.name.endsWith('.md') && !HISTORICAL.has(entry.name)) files.push(full)

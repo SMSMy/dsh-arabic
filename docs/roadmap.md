@@ -24,11 +24,15 @@ What exists today:
 - a content card's own `<header>`/`<footer>` do not read as shell chrome
   (`data-question-key` marks the composer's question card), while every landmark
   outside such a card still does;
+- a double-quoted span is **one unit**, so a quoted command cannot outvote the
+  Arabic sentence holding it;
+- a Windows path is a **code token** even when a folder inside it is Arabic, so a
+  block of paths stays LTR instead of re-ordering each path around that word;
 - a `dir` set by the app or the author is **never overridden**;
 - `pre`, `code`, inline code and the composer are handled explicitly.
 
-Covered by `tests/golden-direction.mjs` (30 golden strings, including the two
-documented limits) and `tests/verify-rtl.mjs` (63 DOM behaviour checks), with the
+Covered by `tests/golden-direction.mjs` (45 golden strings, including the two
+documented limits) and `tests/verify-rtl.mjs` (64 DOM behaviour checks), with the
 question card's shape pinned in `data/card-pins.json` and re-read from an installed
 archive by `scripts/check-card-pins.mjs`.
 

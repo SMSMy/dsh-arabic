@@ -68,6 +68,15 @@ const matrix = [
   ['راجع https://example.com/docs قبل البدء', 'rtl', 'URL does not outvote prose'],
   ['الخطأ 404 غير موجود', 'rtl', 'numbers are neutral'],
 
+  // A Windows path that runs through an Arabic folder name is a path, not prose:
+  // the backslash is a technical separator, so the token does not vote — which is
+  // what keeps a block of paths LTR (otherwise its own Latin runs get re-ordered
+  // around the Arabic segment, and the path reads backwards).
+  ['"C:\\Users\\hshli\\Downloads\\Compressed\\الخطوط\\thmanyahseriftext"', null, 'a quoted Windows path through an Arabic folder is a code token'],
+  ['D:\\مشروع\\الواجهة\\assets\\logo.svg', null, 'the same path without quotes'],
+  ['افتح C:\\Code-backup\\dsh-arabic\\الخطوط ثم عدّل', 'rtl', 'the same path inside Arabic prose does not vote'],
+  ['نسخ الملفات إلى D:\\مشروع\\الواجهة\\assets فورًا', 'rtl', 'Arabic prose carrying a mixed path still flips'],
+
   // English prose is never flipped, even when it quotes Arabic.
   ['The build failed while parsing سلام in the config file.', null, 'English prose quoting one word'],
   ['This is a long English sentence with one Arabic word كلمة inside it', null, 'same, longer'],
@@ -76,6 +85,15 @@ const matrix = [
   ['git status', null, 'command only'],
   ['Saved', null, 'single word'],
   ['12345', null, 'digits only'],
+
+  // A double-quoted span is ONE unit: a quotation is an object inside the
+  // sentence, not a heap of words that can outvote it.
+  ['شغّل "git status"', 'rtl', 'a quoted command is one unit, not two Latin words'],
+  ['افتح "npm run build" ثم أعد المحاولة', 'rtl', 'quoted words do not outvote the prose'],
+  ['"مرحبا بكم في التطبيق"', 'rtl', 'a quoted Arabic phrase is Arabic'],
+  ['شغّل "git status', 'rtl', 'an unclosed quotation is the same unit while streaming'],
+  ['أرسل "continue" ليواصل الموديل.', 'rtl', 'a quoted English word inside an Arabic notice'],
+  ['The field says "سلام" and stops', null, 'English prose quoting one Arabic word stays LTR'],
 
   // Known limits, asserted on purpose.
   ['شغّل git status', null, 'KNOWN LIMIT: two bare Latin words outweigh one Arabic word'],
@@ -104,7 +122,12 @@ const probes = [
   ['Error:', 1, 'same for an error label'],
   ['src/index.ts', 0, 'a real path is still a code token'],
   ['@deepseek-ai/dsh', 0, 'a scoped package name is still a code token'],
-  ['15/15', 0, 'a ratio is still a code token']
+  ['15/15', 0, 'a ratio is still a code token'],
+  ['"git status"', 1, 'a quoted span is one unit — one Latin word, not two'],
+  ['git status', 2, 'the same words unquoted still vote twice'],
+  ['"C:\\Users\\hshli\\Downloads\\Compressed\\الخطوط\\thmanyahseriftext"', 0, 'a Windows path with an Arabic folder votes for nothing'],
+  ['D:\\مشروع\\الواجهة\\assets\\logo.svg', 0, 'a path is a path even when two of its segments are Arabic'],
+  ['ملف.نهائي', 0, 'an Arabic word with a dot is prose, not a code token']
 ]
 for (const [text, expectedLtr, label] of probes) {
   const w = window.__dshArabic.weigh(text)

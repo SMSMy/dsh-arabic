@@ -3,6 +3,50 @@
 Every release below is published to npm through trusted publishing (OIDC) with a
 provenance attestation, and every one carries the suite results it was cut from.
 
+## 0.4.0
+
+Three cuts of thmanyah, and two reading rules that the bidi layer had backwards.
+
+- **the interface wears three thmanyah cuts, each in the role it was drawn for.**
+  Sans is the interface default (labels, buttons, chrome, small copy), Serif Text
+  carries long-form reading (markdown paragraphs, list items, quotations) and Serif
+  Display takes the headings. The roles are bound to `--dsw-font-family` — the one
+  variable every typography token in the app's theme resolves through — plus one
+  element rule each for the other two, so one declaration moves the whole
+  interface whatever the language is; the app's own stack stays behind every family
+  and the code family is untouched. The nine weights ship unmodified in `fonts/` —
+  a subfolder of the repository, never its root, with both license texts — and the
+  plugin **serves them over the app's own web server** (`/dsh-arabic/fonts/…`)
+  instead of inlining base64: the Desktop shell loads its page from
+  `http://127.0.0.1:<port>`, so one same-origin URL covers both shells and the page
+  carries nine short `@font-face` rules. Point `DSH_ARABIC_FONTS` at a directory
+  laid out the same way for another copy, or at an empty one to keep the app's own
+  stack. See [fonts/README.md](fonts/README.md);
+- **a Windows path is a code token even when a folder inside it is Arabic.** The
+  separator class knew `/` but not `\`, and the RTL test ran before the code test, so
+  `"C:\Users\…\الخطوط\thmanyahseriftext"` counted as Arabic prose: a block of
+  such paths flipped to RTL and the bidi algorithm re-ordered each path's own Latin
+  runs around that Arabic segment, which is what made a list of paths read
+  backwards. Code now votes before prose and the backslash is a technical
+  separator, so a block of paths stays LTR and each path reads in its own order; a
+  mixed path inside Arabic prose is still a paragraph-level decision, and writing
+  it between backticks isolates it left-to-right;
+- **a double-quoted span counts as one unit.** `"git status"` is a phrase, a
+  command, a title — one object inside the sentence — but the splitter counted its
+  words, so `شغّل "git status"` stayed LTR: two Latin words against one Arabic
+  word. The tokenizer now follows the quotation, the way it already follows a
+  scoped package name: whitespace inside quotes does not split, and an unclosed
+  quote — a streamed answer, mid-quotation — runs to the end of the text, which is
+  the unit its closed form will produce, so nothing flickers when the closing mark
+  lands. `شغّل git status` unquoted is unchanged, and still a documented limit;
+- **the browser half stops pasting a second copy of the stylesheet** the host
+  already injected as an index row (that row carries no id), which with the
+  embedded faces would have been a third of a megabyte duplicated in every page.
+
+Suites behind this release: 64 bidi + 32 locale + **45** golden direction + **29**
+font checks (`npm test`), plus the completeness, consistency, doc-count,
+bidi-family and card/shimmer pin gates in `npm run check`.
+
 ## 0.3.2
 
 The question card the assistant asks with was the one content surface the layer
