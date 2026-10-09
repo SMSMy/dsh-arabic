@@ -65,6 +65,8 @@ The bright band is mirrored.
 - No official `@deepseek-ai/*` package is declared as a dependency; the browser
   half touches only the `locale` service and the baseline primitives.
 
+**Released:** [`v0.4.0`](https://github.com/SMSMy/dsh-arabic/releases/tag/v0.4.0) is live on npm with a provenance attestation — three thmanyah cuts for the interface, and the path/quotation direction rules. The published tarball was re-downloaded and every one of its 20 files is byte-identical to the repository; the package page now opens with the Arabic README. **2,190 downloads in its first five days on npm.**
+
 **Verification (all green on 0.4.0)**
 
 - **64** bidi behaviour checks on a DOM shim — marking rules, code isolation,
