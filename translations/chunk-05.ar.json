@@ -183,7 +183,6 @@
   "pluginManager#intro": "ثبّت البلاقن وشغّلها واضبطها",
   "pluginManager#loading": "جارٍ قراءة البلاقن…",
   "pluginManager#metadataError": "خطأ في بيانات الحزمة الوصفية: {error}",
-  "pluginManager#officialTitle": "رسمي",
   "pluginManager#openDetail": "عرض {name}",
   "pluginManager#overriddenNotice": "تم حفظ {name}، لكن إعدادًا ذا أولوية أعلى يتجاوزه، لذا فهو غير سارٍ",
   "pluginManager#panel": "البلاقن",

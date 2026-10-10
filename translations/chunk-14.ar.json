@@ -34,7 +34,6 @@
   "trajectory#details.result": "النتيجة",
   "trajectory#details.retry": "إعادة المحاولة",
   "trajectory#details.retryDelay": "مهلة إعادة المحاولة",
-  "trajectory#details.scheduled": "مجدول",
   "trajectory#details.source": "المصدر",
   "trajectory#details.status": "الحالة",
   "trajectory#details.subtoolCalls": "استدعاءات الأدوات الفرعية",

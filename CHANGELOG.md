@@ -3,6 +3,45 @@
 Every release below is published to npm through trusted publishing (OIDC) with a
 provenance attestation, and every one carries the suite results it was cut from.
 
+## 0.4.2
+
+Support for DSH **0.2.1-alpha.2**, whose General settings gained a font role per
+surface (interface text, code, sidebar terminal), together with that release's key
+set and its Arabic translations.
+
+- **the shipped cuts became a default instead of a value.** 0.2.1 makes
+  `--dsw-font-family` an indirection of the app's own: on `body` it carries
+  `--dsh-font-family-text` — the family chosen in General settings — ahead of the
+  built-in stack, and the boot script writes that variable only while the field is
+  not empty. Each of the three roles now names its cut *after* that variable
+  (`var(--dsh-font-family-text, var(--dsh-arabic-sans)), var(--dsh-arabic-sans)`,
+  and the same shape for the reading and display roles), which is the app's own
+  "list then stack" order: a chosen family leads, the cut still answers for every
+  glyph that family cannot draw (Arabic, usually, when the choice is a Latin one),
+  and an empty field leaves thmanyah in front. The variable is read and never
+  declared, so an explicit choice is never shadowed. On `0.2.0-rc.2`, where the
+  variable does not exist, every declaration resolves to the cut as before.
+- **the English key set was re-extracted** for upstream `d7432673`: 60 namespaces
+  / 3,307 keys (was 59 / 3,228) — 85 additions and 6 removals. The additions are
+  the new font rows, the work-details collapse setting, the whole
+  `cotTranslation` namespace of the experimental reasoning-translation plugin, and
+  plugin-manager, microphone, subagent and workspace strings; all 85 are
+  translated in `translations/chunk-17.ar.json`, and the six obsolete entries were
+  dropped from the chunks that owned them. Coverage is 3,307/3,307 again.
+- **the extractor's cache is keyed by the commit it measures.** It reused cached
+  file bodies across revisions, so a re-run listed the new tree but re-read the
+  previous commit's files: 0.2.1-alpha.2's restructured `settings.theme`
+  dictionary read as "no change", and 47 keys stayed invisible until the cache was
+  made per-commit. Found by measuring the same release twice.
+- **verified on the served build itself**, not only against published assets: the
+  activity mirror's hashed names are unchanged in the 0.2.1-alpha.2 stylesheet,
+  the question card still carries `data-question-key`, builds its own
+  `<header>`/`<footer>` and keeps flex option cells — and the layer marks the two
+  text cells of an option (`data-dsh-arabic-bidi`, `dir="rtl"`,
+  `unicode-bidi: isolate`) while leaving the option control and its number badge
+  alone. The composer takeover still reports `dir="auto"` kept, our marker set and
+  `direction: rtl`.
+
 ## 0.4.1
 
 The composer's own paragraphs carry a direction the app wrote: Lexical puts

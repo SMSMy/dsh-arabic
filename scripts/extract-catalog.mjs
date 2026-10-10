@@ -31,7 +31,16 @@ import { dirname, join } from 'node:path'
 import vm from 'node:vm'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const CACHE = join(ROOT, '.cache', 'extract')
+const CACHE_ROOT = join(ROOT, '.cache', 'extract')
+/**
+ * Where this run's sources live. The tree is listed at one commit, so the cache
+ * is keyed by that commit: a file that changed upstream since the last run must
+ * be fetched again, and a cache shared across commits hands the next run the
+ * previous revision's copy of every path that still exists — which reads as a
+ * clean, small key diff when the truth is a renamed or restructured dictionary.
+ * The root stays for the per-commit directories.
+ */
+let CACHE = CACHE_ROOT
 const OWNER = 'deepseek-ai'
 const REPO = 'deepseek-harness'
 const REF = process.env.DSH_REF || 'master'
@@ -69,7 +78,7 @@ const raw = async (path) => {
   return text
 }
 
-mkdirSync(CACHE, { recursive: true })
+mkdirSync(CACHE_ROOT, { recursive: true })
 
 /* ------------------------------------------------------------- 1. the tree --- */
 
@@ -77,6 +86,8 @@ console.log(`1/5  listing ${OWNER}/${REPO}@${REF}`)
 const tree = await api(`/repos/${OWNER}/${REPO}/git/trees/${REF}?recursive=1`)
 const paths = tree.tree.filter((entry) => entry.type === 'blob').map((entry) => entry.path)
 const head = await api(`/repos/${OWNER}/${REPO}/commits/${REF}`)
+CACHE = join(CACHE_ROOT, String(head.sha).slice(0, 12))
+mkdirSync(CACHE, { recursive: true })
 console.log(`     ${paths.length} paths at ${String(head.sha).slice(0, 12)}`)
 
 const isDictionary = (path) =>

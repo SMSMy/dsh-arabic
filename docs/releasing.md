@@ -31,6 +31,20 @@ node scripts/check-shimmer-pins.mjs "$LOCALAPPDATA/Programs/DeepSeek Harness/res
 node scripts/check-card-pins.mjs "$LOCALAPPDATA/Programs/DeepSeek Harness/resources/app.asar"
 ```
 
+When the Desktop app is not yet on the build you are packaging for, the same two
+contracts can be read from a **served instance** instead — both pins are names in
+the app's own assets, and `dsh web` serves exactly those files:
+
+```bash
+# a profile with this plugin installed, on a free port
+dsh web --port 19400 --no-open      # the printed ?token= URL is the authenticated one
+# then fetch the page, take its /assets/index-*.css, and grep for the names in
+# data/shimmer-pins.json and data/card-pins.json. The question card's shape is
+# verifiable live in that page: `data-question-key` on the frame, its own
+# <header>/<footer>, and option cells that carry the layer's marker while the
+# row's control does not.
+```
+
 If upstream DSH added strings, translate them first:
 
 ```bash
@@ -39,6 +53,10 @@ node scripts/build-client.mjs --check           # list the new keys
 node scripts/assemble-translations.mjs --from translations
 npm run build && npm test
 ```
+
+The extractor caches its sources under `.cache/extract/<commit>/`, so a re-run
+after an upstream release fetches every changed file again instead of measuring
+the previous revision.
 
 Missing keys are safe at runtime (they fall back to English), so a partial
 translation can ship.

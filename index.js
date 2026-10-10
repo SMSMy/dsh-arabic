@@ -52,8 +52,14 @@ import { fileURLToPath } from 'node:url'
  *
  * The families are applied by re-declaring `--dsw-font-family`, the single
  * variable every typography token in the app's theme resolves through, plus one
- * element rule for each of the other two roles. `--ds-font-family-code` is
- * deliberately untouched: code stays monospace, the way it stays LTR.
+ * element rule for each of the other two roles. Since DSH 0.2.1 that variable is
+ * itself an indirection of the app's: it carries `--dsh-font-family-text` — the
+ * font chosen under General settings — ahead of the built-in stack, and the boot
+ * script writes that variable only when the field is not empty. So the cut is
+ * named as that variable's fallback instead of replacing the variable outright:
+ * an explicit choice wins over the shipped cut, and an empty field means
+ * thmanyah. `--ds-font-family-code` is deliberately untouched: code stays
+ * monospace, the way it stays LTR.
  */
 const PLUGIN_ROOT = dirname(fileURLToPath(import.meta.url))
 /** Prefix the faces are served under; versioned so a release never serves stale bytes. */
@@ -80,6 +86,16 @@ const FONT_FAMILIES = [
 ]
 /** The app's own stack, kept behind every family so a missing glyph still lands. */
 const FONT_FALLBACK = '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
+/**
+ * The app's own text role, as of DSH 0.2.1: the theme's token sheet puts whatever
+ * the user chose under General settings into `--dsw-font-family` ahead of the
+ * built-in stack on `body`, through this variable, and the boot script writes it
+ * only when the field is not empty. It is read here and never declared — that is
+ * the whole contract: the shipped cuts are the default, an explicit choice is
+ * not overridden, and typing any family in the app's own field is the escape
+ * hatch from them.
+ */
+const APP_TEXT_FONT = '--dsh-font-family-text'
 
 /** Every weight actually present, resolved once: the route and the stylesheet share the list. */
 function listFaces() {
@@ -158,27 +174,36 @@ const FONT_CSS = FONT_FACES.length === 0 ? '' : (() => {
   lines.push('   the heading cut. Two selectors because the app declares the base variable on')
   lines.push('   :root and the desktop shell re-declares it on body; html:root outranks the')
   lines.push('   first and the body selector the second, neither depending on stylesheet')
-  lines.push("   order (this row is injected before the app's own CSS). */")
+  lines.push("   order (this row is injected before the app's own CSS).")
+  lines.push('')
+  lines.push('   Since 0.2.1 that variable is an indirection of the app: on body it holds')
+  lines.push('   --dsh-font-family-text — the family chosen under General settings — ahead of')
+  lines.push('   the built-in stack, and the boot script writes it only while the field is not')
+  lines.push('   empty. So the cut is appended after that variable, exactly the way the app')
+  lines.push('   appends its own built-in stack: a chosen family leads, and the cut still')
+  lines.push('   answers for every glyph that family cannot draw — Arabic, usually, when the')
+  lines.push('   choice is a Latin one. An empty field repeats the cut, which font matching')
+  lines.push('   ignores. The variable is read here and never declared. */')
   lines.push('html:root,')
   lines.push('html:root body {')
   for (const family of families) {
     lines.push('  ' + family.variable + ": '" + family.name + "', " + FONT_FALLBACK + ';')
   }
   const base = families.find((family) => family.id === 'sans') || families[0]
-  lines.push('  --dsw-font-family: var(' + base.variable + ');')
+  lines.push('  --dsw-font-family: var(' + APP_TEXT_FONT + ', var(' + base.variable + ')), var(' + base.variable + ');')
   lines.push('}')
   if (families.some((family) => family.id === 'text')) {
     lines.push('')
     lines.push('/* Long-form reading: markdown paragraphs, list items and quotations. */')
     lines.push('html:root :is(p, li, blockquote, dd) {')
-    lines.push('  font-family: var(--dsh-arabic-serif-text);')
+    lines.push('  font-family: var(' + APP_TEXT_FONT + ', var(--dsh-arabic-serif-text)), var(--dsh-arabic-serif-text);')
     lines.push('}')
   }
   if (families.some((family) => family.id === 'display')) {
     lines.push('')
     lines.push('/* Headings wear the display cut. */')
     lines.push('html:root :is(h1, h2, h3, h4, h5, h6) {')
-    lines.push('  font-family: var(--dsh-arabic-display);')
+    lines.push('  font-family: var(' + APP_TEXT_FONT + ', var(--dsh-arabic-display)), var(--dsh-arabic-display);')
     lines.push('}')
   }
   lines.push('')

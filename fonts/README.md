@@ -29,6 +29,10 @@
 --dsh-arabic-display      → h1…h6                  (العناوين)
 ```
 
+ومنذ DSH 0.2.1 يقف كلٌّ من الثلاثة **احتياطياً** لمتغيّر التطبيق
+`--dsh-font-family-text` — الخط المختار في **الإعدادات ← عام**: اختيارك يتقدّم على
+قطعنا، والحقل الفارغ يُبقي ثمانية. والمتغيّر يُقرأ ولا يُعرَّف هنا أبداً.
+
 وفضلًا عن ذلك: حزمة خطوط التطبيق تبقى خلف كل عائلة في التعريف نفسه (فما لا محرف
 له عندنا يسقط إليها)، وخطّ الكود لا يُلمس (يبقى أحادي المسافة).
 
@@ -68,7 +72,10 @@ unmodified.
 `/dsh-arabic/fonts/v<version>/<family>/<file>` on the app's own web server, and
 binds three variables — `--dsh-arabic-sans` (which becomes `--dsw-font-family`),
 `--dsh-arabic-serif-text` and `--dsh-arabic-display` — to their element roles. The
-app's own stack stays behind every family, and the code family is untouched.
+app's own stack stays behind every family, and the code family is untouched. Since
+DSH 0.2.1 each of the three also sits behind the app's own `--dsh-font-family-text`
+(the family chosen under General settings), so a chosen family wins and an empty
+field keeps thmanyah.
 
 Served rather than inlined because the Desktop shell loads its page from
 `http://127.0.0.1:<port>`: a same-origin URL works in both shells, and the page

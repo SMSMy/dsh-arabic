@@ -14,7 +14,7 @@ Everything here is reproducible from a clean checkout.
 
 | Piece | Version / note |
 |---|---|
-| DSH | `0.2.0-rc.2`, Desktop app, profile `desktop` |
+| DSH | `0.2.0-rc.2`, Desktop app, profile `desktop`; `0.2.1-alpha.2`, served Web UI (`dsh web`, profile `web`) |
 | Node | 24.x (plugin targets ≥ 20) |
 | npm | 11.17.0 |
 | `gh` CLI | authenticated as the repository owner |
@@ -36,16 +36,16 @@ Everything here is reproducible from a clean checkout.
 
 `scripts/extract-catalog.mjs` (then `npm run extract`):
 
-1. list the repo tree → **14,208 paths**;
-2. select dictionary sources (`locales.ts`, `locale.ts`, `locales/*.ts`) → **68 files**;
+1. list the repo tree → **14,988 paths**;
+2. select dictionary sources (`locales.ts`, `locale.ts`, `locales/*.ts`) → **69 files**;
 3. find every `locale.register(...)` call site → map each dictionary to its real namespace;
 4. transpile/bundle each dictionary with esbuild and read the exported English dictionary out of a sandboxed evaluation;
 5. resolve namespaces from the call site plus the exported string constants.
 
-Result: **59 namespaces · 3,228 keys · 0 unresolved calls**, recorded against
-upstream commit `5badb15009ae` in `data/en-catalog.meta.json`.
+Result: **60 namespaces · 3,307 keys · 0 unresolved calls**, recorded against
+upstream commit `d74326738864` in `data/en-catalog.meta.json`.
 
-Three real bugs were found and fixed by testing this pipeline against a known
+Four real bugs were found and fixed by testing this pipeline against a known
 result (it must reproduce the committed catalog exactly):
 
 | Bug | Symptom | Fix |
@@ -53,6 +53,7 @@ result (it must reproduce the committed catalog exactly):
 | `*/` inside a JSDoc block | the comment ended early and the file failed to parse | reworded the comment |
 | constants keyed by bare file name | every package has an `index.ts`, so namespaces collided → 30 unresolved calls | key by full path |
 | code-search pagination stopped on a short page | only 57 of 80 hits were fetched → 29 namespaces instead of 59 | paginate until an empty page |
+| the fetch cache ignored the revision | a re-run listed the new tree but re-read the previous commit's files, so a renamed or restructured dictionary read as "no change" (0.2.1-alpha.2's font rows were invisible until the cache was made per-commit) | key the cache directory by the commit being measured |
 
 ### 2.3 Translation — `locales/ar.json`
 
@@ -133,10 +134,10 @@ the build → run all three suites against the extracted package.
 
 | Gate | Command | Result |
 |---|---|---|
-| Direction behaviour | `node tests/verify-rtl.mjs` | 34/34 |
-| Locale, artifact and registration | `node tests/verify-locales.mjs` | 28/28 |
-| Golden direction matrix | `node tests/golden-direction.mjs` | 25/25 |
-| Completeness | `node scripts/build-client.mjs --check` | 3,228/3,228 translated, 0 missing |
+| Direction behaviour | `node tests/verify-rtl.mjs` | 67/67 |
+| Locale, artifact and registration | `node tests/verify-locales.mjs` | 32/32 |
+| Golden direction matrix | `node tests/golden-direction.mjs` | 45/45 |
+| Completeness | `node scripts/build-client.mjs --check` | 3,307/3,307 translated, 0 missing |
 | Cross-batch consistency | `node scripts/lint-consistency.mjs --strict` | 0 findings |
 | Published artifact | download + compare + re-run suites | byte-identical, suites green |
 

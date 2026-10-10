@@ -145,7 +145,7 @@ Registered through the official locale service (`ctx.locale.addLanguage` +
 `ctx.locale.register`), which is the mechanism the app itself uses — no DOM
 string replacement, no monkey-patching:
 
-- **59 namespaces / 3,228 keys** taken from the official DSH source
+- **60 namespaces / 3,307 keys** taken from the official DSH source
 - keys we do not translate fall back to English automatically (`fallback: 'en'`)
 - pick **العربية** in *Settings → General → Language*
 
@@ -181,6 +181,14 @@ One declaration carries the interface role — the plugin re-declares
 resolves through — and two element rules carry the other two. The app's own stack
 stays behind every family in the same declaration, the code family is untouched,
 and each role goes silent if its files are missing.
+
+Since DSH 0.2.1 that variable is an indirection of the app's own: on `body` it
+carries `--dsh-font-family-text` — the family you choose under General settings —
+ahead of the built-in stack. The plugin therefore names its cut as the *fallback*
+of that variable rather than as its value: a family chosen in the app's own field
+wins over the shipped cut for the interface, the prose and the headings alike, and
+an empty field — the app writes nothing then — leaves thmanyah in place. The
+variable is read, never declared, which is what keeps that order.
 
 The weights live in [`fonts/`](fonts/README.md) — a subfolder of the repository,
 never its root, with both license texts — and the plugin serves them from
@@ -267,7 +275,7 @@ a future slot change can never take the language pack down with it.
 ## Development
 
 ```bash
-npm test                     # direction (67) + locale (32) + golden matrix (45) + fonts (29)
+npm test                     # direction (67) + locale (32) + golden matrix (45) + fonts (28)
 npm run check                # completeness + consistency lint + golden matrix
 npm run build                # regenerate lib/client.js
 npm run status               # coverage against the recorded upstream revision
@@ -291,13 +299,20 @@ never breaks the interface. See [CONTRIBUTING.md](CONTRIBUTING.md) and the
 
 ## Compatibility
 
-Built and tested against **DSH 0.2.0-rc.2** on the Desktop app and the served Web
-UI. Both surfaces use the same two documented-but-internal seams — the
-`webserver/index-inject` event and the client `locale` service — and the plugin
-degrades safely if either changes: the direction layer is wrapped so it can never
-break an index render, and the language pack simply stops registering. On the
-Desktop app the injection table is collected once at host startup, so a restart
-(not a page refresh) is what applies it.
+Built and tested against **DSH 0.2.0-rc.2** (Desktop app) and **0.2.1-alpha.2** (a
+served `dsh web` instance). Both surfaces use the same two documented-but-internal
+seams — the `webserver/index-inject` event and the client `locale` service — and
+the plugin degrades safely if either changes: the direction layer is wrapped so it
+can never break an index render, and the language pack simply stops registering.
+On the Desktop app the injection table is collected once at host startup, so a
+restart (not a page refresh) is what applies it.
+
+Since **0.2.1** the app owns a font role of its own (interface text, code, sidebar
+terminal): it writes the chosen family into `--dsh-font-family-text` on `body`, so
+this plugin names its cut as that variable's *fallback* — a chosen family leads,
+the shipped cut still answers for every glyph that family cannot draw (Arabic,
+usually), and an empty field keeps thmanyah in front. The variable is read, never
+declared, and `tests/verify-fonts.mjs` pins that order.
 
 **Interactions with other Arabic/RTL plugins.** This one and `dsh-client-ui-rtl`
 or `dsh-rtl-fix` both set `dir` on content blocks; installing two of them means

@@ -12,6 +12,14 @@
  *      and their element rules, a registered `/dsh-arabic/fonts` route whose
  *      handler serves exactly the declared files and nothing else.
  *
+ * The roles are pinned to the app's own text variable too: since DSH 0.2.1,
+ * `--dsh-font-family-text` carries whatever the user chose under General
+ * settings, so every declaration names that variable first and repeats the cut
+ * after it — the app's own "list then stack" shape. A chosen family leads, the
+ * cut still answers for glyphs that family cannot draw, and an empty field (no
+ * variable at all) leaves the cut in front. The suite asserts the variable is
+ * read and never declared; declaring it would shadow the app's choice.
+ *
  * index.js resolves its directories when it is imported, so every case runs in a
  * child process with DSH_ARABIC_FONTS pinned — an explicit value is the whole
  * search, which is what makes case 1 reproducible on a machine that has the fonts.
@@ -29,7 +37,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const INDEX = pathToFileURL(join(ROOT, 'index.js')).href
 
 let failed = 0
+let ran = 0
 const check = (ok, label, detail) => {
+  ran++
   if (!ok) failed++
   console.log((ok ? 'PASS  ' : 'FAIL  ') + label + (ok || !detail ? '' : '  (' + detail + ')'))
 }
@@ -112,9 +122,10 @@ try {
   for (const [id, name] of [['sans', 'Thmanyah Sans'], ['text', 'Thmanyah Serif Text'], ['display', 'Thmanyah Serif Display']]) {
     check(withFont.CSS.includes("--dsh-arabic-" + (id === 'text' ? 'serif-text' : id) + ": '" + name + "'"), 'fonts: the ' + id + ' role has a variable')
   }
-  check(/--dsw-font-family: var\(--dsh-arabic-sans\)/.test(withFont.CSS), 'fonts: the interface default is the sans cut')
-  check(/html:root :is\(p, li, blockquote, dd\) \{\s*font-family: var\(--dsh-arabic-serif-text\)/.test(withFont.CSS), 'fonts: prose wears the text cut')
-  check(/html:root :is\(h1, h2, h3, h4, h5, h6\) \{\s*font-family: var\(--dsh-arabic-display\)/.test(withFont.CSS), 'fonts: headings wear the display cut')
+  check(/--dsw-font-family: var\(--dsh-font-family-text, var\(--dsh-arabic-sans\)\), var\(--dsh-arabic-sans\)/.test(withFont.CSS), 'fonts: the interface default is the sans cut, behind the app text variable and still after it')
+  check(/html:root :is\(p, li, blockquote, dd\) \{\s*font-family: var\(--dsh-font-family-text, var\(--dsh-arabic-serif-text\)\), var\(--dsh-arabic-serif-text\)/.test(withFont.CSS), 'fonts: prose wears the text cut, behind the app text variable and still after it')
+  check(/html:root :is\(h1, h2, h3, h4, h5, h6\) \{\s*font-family: var\(--dsh-font-family-text, var\(--dsh-arabic-display\)\), var\(--dsh-arabic-display\)/.test(withFont.CSS), 'fonts: headings wear the display cut, behind the app text variable and still after it')
+  check(!/--dsh-font-family-text\s*:/.test(withFont.CSS), 'fonts: the app text variable is read, never declared')
   check(!/--ds-font-family-code\s*:/.test(withFont.CSS), 'fonts: the code family is never declared')
   check(withFont.CSS.indexOf('@font-face') < withFont.CSS.indexOf('[data-dsh-arabic-bidi="1"]'), 'fonts: the font block precedes the direction layer')
 
@@ -133,7 +144,7 @@ try {
   rmSync(work, { recursive: true, force: true })
 }
 
-const total = 4 + 3 + 6 + 8 + 8
+const total = ran
 console.log('')
 console.log((total - failed) + '/' + total + ' font checks passed')
 process.exit(failed === 0 ? 0 : 1)
