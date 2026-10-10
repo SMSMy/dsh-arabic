@@ -29,7 +29,7 @@ shas — readable while it flips the prose.
     order, while a control never does — the card's number badge and buttons keep the
     sides the design gave them;
   - a `dir` set by the app or the author is **never** overridden.
-- **A full Arabic interface pack** — 3,228 strings across 59 namespaces,
+- **A full Arabic interface pack** — 3,307 strings across 60 namespaces,
   registered through the official client locale service (`ctx.locale.addLanguage`
   + `ctx.locale.register`), with an English fallback for anything untranslated.
   No DOM text replacement, no monkey-patching.
@@ -65,23 +65,25 @@ The bright band is mirrored.
 - No official `@deepseek-ai/*` package is declared as a dependency; the browser
   half touches only the `locale` service and the baseline primitives.
 
-**Released:** [`v0.4.0`](https://github.com/SMSMy/dsh-arabic/releases/tag/v0.4.0) is live on npm with a provenance attestation — three thmanyah cuts for the interface, and the path/quotation direction rules. The published tarball was re-downloaded and every one of its 20 files is byte-identical to the repository; the package page now opens with the Arabic README. **2,190 downloads in its first five days on npm.**
+**Released:** [`v0.4.2`](https://github.com/SMSMy/dsh-arabic/releases/tag/v0.4.2) is live on npm with a provenance attestation — three thmanyah cuts (Sans for the interface, Serif Text for reading, Serif Display for headings) that now sit *behind* whatever font the app itself is set to, and the path/quotation direction rules. The published tarball was re-downloaded and every one of its 20 files is identical to the tagged commit's blobs; the package page opens with the Arabic README. **2,481 downloads in the week to 2026-10-09** (npm's own counter).
 
-**Verification (all green on 0.4.0)**
+**Verification (all green on 0.4.2)**
 
 - **67** bidi behaviour checks on a DOM shim — marking rules, code isolation,
   composer direction, streamed content, disable/restore, and the chrome cases above.
 - **45** golden direction strings (`tests/golden-direction.mjs`): the direction
   each of them must get, including the quoted-unit cases, the Windows-path code
   tokens, the mechanism probes and the two limits asserted on purpose.
-- **29** font checks (`tests/verify-fonts.mjs`): no font on the machine emits no
+- **28** font checks (`tests/verify-fonts.mjs`): no font on the machine emits no
   `@font-face`, declares no variable and registers no route; with fonts present the
-  three roles get their variables and element rules, and the `/dsh-arabic/fonts`
-  handler serves exactly the declared files — bytes identical, traversal a 404.
+  three roles get their variables and element rules — each one named behind the
+  app's own font choice, so a family the user picks wins and the shipped cut still
+  answers for every glyph it cannot draw — and the `/dsh-arabic/fonts`
+  handler serves exactly the declared files: bytes identical, traversal a 404.
 - **32** locale checks — catalog completeness against the official key set,
   placeholder integrity, artifact contract, language registration, settings row,
   and the locale gate the browser half writes for the activity mirror.
-- CI runs the three suites plus a strict consistency lint on Node 20, 22 and 24; the
+- CI runs all four suites plus a strict consistency lint on Node 20, 22 and 24; the
   published tarball was re-downloaded, compared byte-for-byte with the build, and
   re-tested.
 
