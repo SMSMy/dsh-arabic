@@ -3,6 +3,63 @@
 Every release below is published to npm through trusted publishing (OIDC) with a
 provenance attestation, and every one carries the suite results it was cut from.
 
+## 0.4.4 — 2026-10-17
+
+The host accepted the 0.2.1 prerelease line; npm still excluded it.
+
+- **the declared peer range carries an explicit branch for the 0.2.1 tuple.** npm
+  judges a peer range with semver's default prerelease rule
+  (`includePrerelease: false`): a prerelease version only participates when some
+  comparator names the same major.minor.patch tuple with a prerelease tag. The
+  former `>=0.2.0-0 <1` names no 0.2.1 comparator, so every `0.2.1-alpha.*`
+  runtime was excluded at install time even though the host — evaluating with
+  `includePrerelease: true` — accepted it. The range is now
+  `>=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <1`. Measured against semver 7.8.5: the old
+  range rejects `0.2.1-alpha.2` and `0.2.1-alpha.5`; the new one accepts both,
+  accepts `0.2.0-rc.2` / `0.2.5` / `0.3.0`, and still rejects `1.0.0`.
+- **`check-runtime-peer` reads `||` and judges the range twice.** Any branch
+  satisfies, and unsupported syntax stays an error. The comparator is
+  semver-faithful at partial bounds (`<1` is `<1.0.0-0`; `<`, `<=` and `>` widen a
+  partial before comparing; partial exact versions are refused), which closes a
+  false pass on a `1.0.0` prerelease. Its self-tests are 13 recorded version/range
+  cases — 11 asserted under both the host and npm, two against the one judge whose
+  verdict is the recorded fact — plus 9 unsupported syntaxes that must stay
+  refused.
+- `screenshots.json` lists the two repository-relative images the plugin listing
+  shows, and the repository description was refreshed to the current 3,307-string
+  count (metadata only; no repository file changed).
+
+## 0.4.3 — 2026-10-17
+
+The release that made the host contract explicit and put a gate behind the numbers
+the package states by hand.
+
+- **the host is a declared, optional peer.** `@deepseek-ai/dsh >=0.2.0-0 <1` is
+  now in `peerDependencies` (optional), because the host evaluates peer ranges at
+  boot (`dsh-app-boot`) and excludes an out-of-range plugin silently: no fiber, no
+  injection, and nothing on the page explains why. `scripts/check-runtime-peer.mjs`
+  reads the version the installed `app.asar` actually ships — `dsh-app-boot`'s own
+  `package.json`, not `dsh --version` — and refuses a range the host would reject;
+  it skips cleanly when no archive is installed.
+- **four evidence gates joined `npm run check`.** `scripts/check-bench.mjs` +
+  `data/bench-baseline.json` defend the direction pass's cost: 1,034 deterministic
+  style reads over 1,000 blocks, with wall time printed but never asserted.
+  `tests/browser-bidi.mjs` renders the golden matrix in headless Chromium and reads
+  glyph order back from Range rects, because a DOM shim cannot prove what a bidi
+  engine does; a machine without Chrome skips. `lint-consistency.mjs --write-pins`
+  signs off every value carrying `{count}` (103, recorded in
+  `data/plural-pins.json`), so a new one is a review rather than an accident. CI
+  runs all of them.
+- **`index.js` was hardened without changing a single direction decision.** Font
+  bytes are read once at import and served from memory instead of per request;
+  every `dir` this layer writes is tracked in a `WeakMap` and only its own value is
+  released; the skip-subtree answer is memoised per pass (`insideSkip`); a silent
+  queue-cap drop became one full rescan, so a dropped node cannot keep a stale
+  direction; long composer values are re-decided at most every 120 ms with a
+  trailing call; and the running build is exposed as `window.__dshArabic.version`.
+- **`./locales/*` is exported**, the local `.dsh/` state directory is ignored, and
+  the new gates are documented in `CONTRIBUTING.md`.
+
 ## 0.4.2
 
 Support for DSH **0.2.1-alpha.2**, whose General settings gained a font role per
