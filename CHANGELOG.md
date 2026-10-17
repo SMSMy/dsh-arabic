@@ -37,6 +37,10 @@ visible instead of silent.
 > installed `0.2.1-rc.1` archive, and 18 on an archive laid out the old way
 > (`0.2.0-rc.2`, module source present), where the source probe still runs.
 
+> **Runtime record, same day:** `0.2.1-rc.2` was audited by comparing the published
+> packages — peer gate COMPATIBLE, every contract unchanged, question card 9/9,
+> shimmer 15/15, no code change — and the records now name it.
+
 ## 0.4.5 — 2026-10-17
 
 Any newer DSH is accepted; only a runtime older than the floor is refused.
