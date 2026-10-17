@@ -3,6 +3,31 @@
 Every release below is published to npm through trusted publishing (OIDC) with a
 provenance attestation, and every one carries the suite results it was cut from.
 
+## 0.4.6 — 2026-10-17
+
+The settings row's host modules are now explicitly optional, and its failure is
+visible instead of silent.
+
+- **the browser half takes `react` and the UI primitives behind a guard.**
+  `registerSettingsRow` is the only code in the artifact that needs them, and the
+  two `require` calls used to run bare inside it: a build that stopped shipping
+  either module aborted the function, and only the call-site `try` kept the reason
+  from ever being reported. The two calls now share one `try`; a failure prints a
+  single `console.warn` line carrying the loader's own message and skips the
+  General-settings row, while `addLanguage`/`register` — which never run through
+  that function — keep installing all 60 namespaces / 3,307 keys. A module that
+  resolves without a usable `Switch` takes the same branch, so neither a missing
+  module nor a renamed primitive can turn a dead row into an unexplained one.
+- **the question-card pins were re-verified on `0.2.1-rc.1`.** `data/card-pins.json`
+  now records `0.2.1-rc.1` / 2026-10-17: the installed archive still carries the
+  `data-question-key` frame, the card's own `<header>`/`<footer>` and the flex
+  option cells (`scripts/check-card-pins.mjs`: 9 passed, 0 failed). The shimmer
+  record stays at `0.2.0-rc.2`: on `0.2.1-rc.1` the primitives package no longer
+  ships as its own directory inside `app.asar` — the frontend compiles it into its
+  assets — so `scripts/check-shimmer-pins.mjs` cannot find the pinned module source
+  and fails that one assertion; its served-name checks still pass 5/5, because the
+  hashed classes and keyframes are unchanged in the shipped stylesheet and script.
+
 ## 0.4.5 — 2026-10-17
 
 Any newer DSH is accepted; only a runtime older than the floor is refused.

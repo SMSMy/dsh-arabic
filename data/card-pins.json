@@ -2,8 +2,8 @@
   "_comment": "What the question-card handling was verified against in the shipped app. DSH renders the composer's question card as a <section> whose question sits in the card's own <header> and whose pager sits in its <footer>, and each option is a flex <button> whose label and description are <span> cells. The layer needs both facts to be true — the frame's data-question-key is what tells it the landmarks are the card's own parts, and the flex row is what makes those cells blockified — and both fail silently if a build moves them: the card then reads exactly as it does without this plugin. scripts/check-card-pins.mjs reads them out of an installed app.asar and fails, naming the difference. Run it before a release (see docs/releasing.md) — it is not in CI, which has no DSH install.",
   "app": {
     "package": "@deepseek-ai/dsh-client-ui-user-questions",
-    "version": "0.2.0-rc.2",
-    "verified": "2026-10-06",
+    "version": "0.2.1-rc.1",
+    "verified": "2026-10-17",
     "archive": "app.asar"
   },
   "module": "@deepseek-ai/dsh-client-ui-user-questions/lib/client.js",
