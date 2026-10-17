@@ -28,6 +28,15 @@ visible instead of silent.
   and fails that one assertion; its served-name checks still pass 5/5, because the
   hashed classes and keyframes are unchanged in the shipped stylesheet and script.
 
+> **Follow-up, same day (`49cdf92`):** that limitation was removed rather than
+> lived with. `scripts/check-shimmer-pins.mjs` now reads the hashed names from the
+> assets the frontend actually serves (`dist/assets/index-*.{css,js}`), normalises
+> the minified spacing, and treats the package-source file as an optional probe —
+> named explicitly in the output when absent, never a failure on its own. The
+> record therefore moved to `0.2.1-rc.1` / 2026-10-17: 15 assertions pass on the
+> installed `0.2.1-rc.1` archive, and 18 on an archive laid out the old way
+> (`0.2.0-rc.2`, module source present), where the source probe still runs.
+
 ## 0.4.5 — 2026-10-17
 
 Any newer DSH is accepted; only a runtime older than the floor is refused.
