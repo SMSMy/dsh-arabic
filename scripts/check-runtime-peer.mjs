@@ -1,6 +1,6 @@
 /**
- * check-runtime-peer.mjs — does the declared DSH peer range accept the DSH that
- * is actually installed?
+ * check-runtime-peer.mjs — does the installed DSH runtime fit the declared
+ * peer range, and is it inside the range this plugin was exercised against?
  *
  * The host refuses to import a plugin whose `@deepseek-ai/dsh` peer range does
  * not match the running runtime (dsh-app-boot's `evaluatePluginCompatibility`,
@@ -9,12 +9,20 @@
  * layer. That is exactly how a range recorded against the wrong version took
  * this plugin down for one boot.
  *
- * npm judges the same range with its default prerelease rule
- * (`includePrerelease: false`), and that judge is the one the old single range
- * lost on: `>=0.2.0-0 <1` rejects every `0.2.1-alpha.*` prerelease at install
- * time even though the host accepts it, which is why the range now carries an
- * OR branch. Both judges are evaluated here: a peer range has to satisfy the
- * runtime and the package manager.
+ * The owner's decision for 0.4.5: the declared range has no upper ceiling. Most
+ * DSH releases leave this plugin's integration points untouched, and being
+ * silently excluded because the runtime moved past an arbitrary ceiling is worse
+ * than running against a version that was not exercised. The floor is
+ * `0.2.0-0`: everything at or above it is accepted; everything below it is
+ * refused. The gate therefore:
+ * - fails only when the runtime is older than that floor;
+ * - warns (still accepts) when the runtime is newer than the newest version in
+ *   `data/tested-runtimes.json`;
+ * - passes silently inside the recorded range.
+ *
+ * npm's default prerelease rule (`includePrerelease: false`) is reported when it
+ * excludes the runtime: the peer is optional, so that is an install-time note,
+ * never a boot refusal.
  *
  * The version to check is NOT `dsh --version` (that may be another install on
  * PATH). It is the `version` field of
@@ -169,11 +177,78 @@ function satisfies(version, range, { includePrerelease = true } = {}) {
   return { ok: sets.some((comparators) => comparatorSetAllows(versionParsed, comparators, includePrerelease)) }
 }
 
+/* ---------------------------------------------------------------- policy --- */
+
+/** The oldest DSH this plugin supports. Everything at or above it is accepted. */
+const FLOOR = '0.2.0-0'
+
+/**
+ * The runtimes this plugin has actually been exercised against. A newer runtime
+ * is accepted by design; this list only decides whether the gate can stay
+ * silent about it.
+ */
+function loadTested() {
+  let body
+  try {
+    body = JSON.parse(readFileSync(join(ROOT, 'data', 'tested-runtimes.json'), 'utf8'))
+  } catch (err) {
+    return { error: `cannot read data/tested-runtimes.json — ${err.message}` }
+  }
+  const entries = Array.isArray(body) ? body : body.runtimes
+  if (!Array.isArray(entries) || !entries.length) return { error: 'data/tested-runtimes.json records no runtimes' }
+  const tested = []
+  for (const entry of entries) {
+    const version = typeof entry === 'string' ? entry : entry && entry.version
+    if (!version || !parseVersion(version)) return { error: `unreadable recorded runtime ${JSON.stringify(entry)}` }
+    tested.push(version)
+  }
+  return { tested }
+}
+const recorded = loadTested()
+if (recorded.error) {
+  console.error(`runtime-peer: ${recorded.error}`)
+  process.exit(2)
+}
+const TESTED = recorded.tested
+const NEWEST = TESTED.reduce((newest, version) => {
+  const parsed = parseVersion(version)
+  return !newest || compareVersions(parsed, newest.parsed) > 0 ? { parsed, text: version } : newest
+}, null)
+
+/**
+ * The verdict for one runtime under one declared range:
+ * - `fail` below the floor, or when the manifest rejects a runtime above it
+ *   (that would be a broken range, not a runtime to refuse);
+ * - `warn` above the newest recorded runtime — accepted, not exercised;
+ * - `pass` inside the recorded range.
+ */
+function judge(runtime, range) {
+  const parsed = parseVersion(runtime)
+  if (!parsed) return { level: 'fail', reason: `unreadable runtime version ${JSON.stringify(runtime)}` }
+  if (compareVersions(parsed, parseVersion(FLOOR)) < 0) {
+    return { level: 'fail', reason: `dsh ${runtime} is older than the supported floor ${FLOOR}` }
+  }
+  const host = satisfies(runtime, range, { includePrerelease: true })
+  const npm = satisfies(runtime, range, { includePrerelease: false })
+  if (host.error || npm.error) return { level: 'fail', reason: host.error || npm.error }
+  if (!host.ok) {
+    return {
+      level: 'fail',
+      reason: `the declared range ${JSON.stringify(range)} rejects dsh ${runtime} although it is at or above the floor — the manifest and the no-ceiling policy disagree`
+    }
+  }
+  return {
+    level: compareVersions(parsed, NEWEST.parsed) > 0 ? 'warn' : 'pass',
+    npmAccepted: npm.ok,
+    newest: NEWEST.text
+  }
+}
+
 /* ------------------------------------------------------------- comparator --- */
 
 const OLD_RANGE = '>=0.2.0-0 <1'
-/** The range with the OR branch: 0.2.0 prereleases and the 0.2.1 line each get one. */
-const RANGE = '>=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <1'
+/** The declared range since 0.4.5: two branches, no upper ceiling. */
+const RANGE = '>=0.2.0-0 <0.2.1-0 || >=0.2.1-0'
 
 /*
  * Each case records the judge it is asserted against: `both` when the two
@@ -184,31 +259,57 @@ const SELF_TESTS = [
   ['0.2.0-rc.2', '>=0.2.1-0 <1', false, 'the range that took the plugin down'],
   ['0.2.1-alpha.2', '>=0.2.1-0 <1', true, 'the CLI version that misled a manual check'],
   ['0.3.0', OLD_RANGE, true, 'a later minor'],
-  ['1.0.0', OLD_RANGE, false, 'a future major'],
+  ['1.0.0', OLD_RANGE, false, 'a future major under the old ceiling'],
   ['0.2.1-alpha.5', OLD_RANGE, false, 'npm default semantics: without an OR branch the whole 0.2.1 prerelease line is excluded', 'npm'],
   ['0.2.1-alpha.5', OLD_RANGE, true, 'the host accepts it where npm does not — the install gap the OR branch closes', 'host'],
   ['0.2.1-alpha.5', RANGE, true, 'the 0.2.1 branch exists for this line'],
-  ['0.2.0-rc.2', RANGE, true, 'the installed runtime, in the first branch'],
+  ['0.2.0-rc.2', RANGE, true, 'the first branch covers it'],
+  ['0.2.1-rc.1', RANGE, true, 'the installed runtime'],
   ['0.2.5', RANGE, true, 'a later patch'],
   ['0.3.0', RANGE, true, 'a later minor'],
-  ['1.0.0', RANGE, false, 'a future major stays outside every branch'],
-  ['1.0.0-beta', RANGE, false, 'a 1.0.0 prerelease is outside <1, which semver reads as <1.0.0-0']
+  ['1.0.0', RANGE, true, 'the no-ceiling range accepts a future major'],
+  ['2.5.0', RANGE, true, 'and a far-future one'],
+  ['0.1.9', RANGE, false, 'below the floor'],
+  ['1.0.0-beta', RANGE, true, 'a future prerelease: the host accepts it; npm note only, because the peer is optional', 'host'],
+  ['0.3.0-beta.2', RANGE, true, 'a new-line prerelease: host accepts, npm note only', 'host']
 ]
 
 let comparatorBroken = false
 for (const [version, range, expected, why, judges = 'both'] of SELF_TESTS) {
-  for (const [judge, includePrerelease] of [['host', true], ['npm', false]]) {
-    if (judges !== 'both' && judges !== judge) continue
+  for (const [judgeName, includePrerelease] of [['host', true], ['npm', false]]) {
+    if (judges !== 'both' && judges !== judgeName) continue
     const got = satisfies(version, range, { includePrerelease })
     if (got.error) {
       comparatorBroken = true
-      console.error(`self-test (${judge}): ${why}: ${got.error}`)
+      console.error(`self-test (${judgeName}): ${why}: ${got.error}`)
     } else if (got.ok !== expected) {
       comparatorBroken = true
-      console.error(`self-test (${judge}): ${why}: expected ${expected} for ${version} in ${range}, got ${got.ok}`)
+      console.error(`self-test (${judgeName}): ${why}: expected ${expected} for ${version} in ${range}, got ${got.ok}`)
     }
   }
 }
+
+/* The 0.4.5 policy: newer is warned about, never refused; only below the floor
+ * is a failure. */
+const POLICY_TESTS = [
+  ['0.1.9', 'fail', 'below the 0.2.0-0 floor'],
+  ['0.2.0-rc.2', 'pass', 'recorded'],
+  ['0.2.1-alpha.2', 'pass', 'recorded'],
+  ['0.2.1-alpha.5', 'pass', 'recorded'],
+  ['0.2.1-rc.1', 'pass', 'the newest recorded runtime'],
+  ['0.2.1', 'warn', 'the stable of the tested line is newer than its rc'],
+  ['1.0.0', 'warn', 'a future major: accepted, not exercised'],
+  ['2.5.0', 'warn', 'a far-future major: accepted by design'],
+  ['0.3.0-beta.2', 'warn', 'a new-line prerelease: accepted, npm note only']
+]
+for (const [version, expected, why] of POLICY_TESTS) {
+  const verdict = judge(version, RANGE)
+  if (verdict.level !== expected) {
+    comparatorBroken = true
+    console.error(`self-test (policy): expected ${expected} for ${version} (${why}), got ${verdict.level}${verdict.reason ? ' — ' + verdict.reason : ''}`)
+  }
+}
+
 /* Unsupported syntax stays an error, never a pass: caret, tilde, wildcard,
  * hyphen range, partial exact versions, an empty set and a dangling OR. */
 const UNSUPPORTED = ['^0.2.0', '~0.2.0', '0.2.x', '0.2.0 - 0.3.0', '*', '', '>=0.2.0 ||', '0.2', '=0.2']
@@ -221,10 +322,11 @@ for (const unsupported of UNSUPPORTED) {
   }
 }
 if (comparatorBroken) {
-  console.error('runtime-peer: the comparator disagrees with the recorded cases — refusing to judge the manifest')
+  console.error('runtime-peer: the self-tests disagree with the recorded cases — refusing to judge the manifest')
   process.exit(2)
 }
 console.log(`runtime-peer: comparator self-tests pass (${SELF_TESTS.length} version/range cases over both judges, ${UNSUPPORTED.length} unsupported syntaxes refused)`)
+console.log(`runtime-peer: policy self-tests pass (${POLICY_TESTS.length} runtimes; floor ${FLOOR}, newest recorded ${NEWEST.text})`)
 
 /* ---------------------------------------------------------------- archive --- */
 
@@ -270,25 +372,28 @@ if (!peers.length) {
 }
 
 let failed = 0
+let warned = 0
 for (const [name, range] of peers) {
-  const host = satisfies(runtimeVersion, range, { includePrerelease: true })
-  const npm = satisfies(runtimeVersion, range, { includePrerelease: false })
-  const error = host.error || npm.error
-  if (error) {
-    console.error(`runtime-peer: ${name} ${JSON.stringify(range)} — ${error}`)
+  const verdict = judge(runtimeVersion, range)
+  if (verdict.level === 'fail') {
+    console.error(`runtime-peer: ${name} ${JSON.stringify(range)} — ${verdict.reason}`)
+    if (/older than the supported floor/.test(verdict.reason)) {
+      console.error('runtime-peer: the host would refuse to import this plugin at boot. Lower the floor (or widen')
+      console.error('runtime-peer: the supported range), or grant an exact-version exemption (dsh plugin allow-version).')
+    }
     failed++
-  } else if (!host.ok) {
-    console.error(`runtime-peer: ${name} ${JSON.stringify(range)} does NOT accept dsh ${runtimeVersion} at boot`)
-    console.error('runtime-peer: the host (includePrerelease:true) would refuse to import this plugin. Widen the range, or')
-    console.error('runtime-peer: grant an exact-version exemption (dsh plugin allow-version) before shipping.')
-    failed++
-  } else if (!npm.ok) {
-    console.error(`runtime-peer: ${name} ${JSON.stringify(range)} does NOT accept dsh ${runtimeVersion} under npm defaults`)
-    console.error('runtime-peer: a published peer range is judged by npm with includePrerelease:false, so installers')
-    console.error('runtime-peer: would see a peer conflict. Add an OR branch naming the prerelease tuple explicitly.')
-    failed++
+    continue
+  }
+  console.log(`runtime-peer: ${name} ${JSON.stringify(range)} accepts dsh ${runtimeVersion} (no upper ceiling)`)
+  if (!verdict.npmAccepted) {
+    console.log("runtime-peer: note — npm's default prerelease rule excludes this runtime; the peer is optional, so this is an install-time note, not a boot refusal")
+  }
+  if (verdict.level === 'warn') {
+    warned++
+    console.warn(`runtime-peer: WARNING — dsh ${runtimeVersion} is newer than the newest recorded runtime ${verdict.newest}; it was not exercised, but it is accepted by design. Record it in data/tested-runtimes.json after a check.`)
   } else {
-    console.log(`runtime-peer: ${name} ${JSON.stringify(range)} accepts dsh ${runtimeVersion} (host and npm)`)
+    console.log(`runtime-peer: dsh ${runtimeVersion} is inside the recorded range (newest ${verdict.newest})`)
   }
 }
+if (!failed && !warned) console.log('runtime-peer: OK — the installed runtime is supported and was exercised')
 process.exit(failed ? 1 : 0)

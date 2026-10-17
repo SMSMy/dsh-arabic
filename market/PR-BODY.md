@@ -60,7 +60,7 @@ The bright band is mirrored.
 **Submission requirements**
 
 - `package.json` declares `dsh.bundle` (`{ "bundle": { "patch": "./cordis.patch.yml" } }`) with `cordis.patch.yml` at the repository root.
-- The host is an optional peer with an explicit prerelease branch — `>=0.2.0-0 <0.2.1-0 || >=0.2.1-0 <1` — so the `0.2.1-*` line resolves under npm's prerelease rule instead of being silently excluded.
+- The host is an optional peer with no upper ceiling — `>=0.2.0-0 <0.2.1-0 || >=0.2.1-0` — so the `0.2.1-*` line resolves under npm's prerelease rule and any newer DSH is accepted; only a runtime older than `0.2.0` is refused. The peer gate warns — it does not refuse — above the newest runtime recorded in `data/tested-runtimes.json`.
 - Real working code, MIT licensed, published on npm as [dsh-arabic](https://www.npmjs.com/package/dsh-arabic) with a new release for every fixed defect, each one through trusted publishing (OIDC) with a provenance attestation.
 - Repository is more than a day old at the time of opening this PR.
 - No official `@deepseek-ai/*` package is declared as a dependency; the browser

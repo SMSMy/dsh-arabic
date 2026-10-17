@@ -1,0 +1,10 @@
+{
+  "_comment": "The DSH runtimes this plugin has actually been exercised against. The declared peer range has no upper ceiling: everything at or above 0.2.0-0 is accepted, and only a runtime below that floor is refused. A runtime newer than the newest entry here is still accepted; scripts/check-runtime-peer.mjs warns that it was not exercised. Add an entry only after a compatibility check, with the date of that check.",
+  "floor": "0.2.0-0",
+  "runtimes": [
+    { "version": "0.2.0-rc.2", "tested": "2026-10-06" },
+    { "version": "0.2.1-alpha.2", "tested": "2026-10-16" },
+    { "version": "0.2.1-alpha.5", "tested": "2026-10-17" },
+    { "version": "0.2.1-rc.1", "tested": "2026-10-17" }
+  ]
+}

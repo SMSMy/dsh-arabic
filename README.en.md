@@ -212,8 +212,15 @@ dsh plugin --profile desktop add link:/absolute/path/to/dsh-arabic
 
 Or install it inside the app: **Settings → Plugins → Plugin Manager**.
 
-> **Restart DSH after installing.** The Desktop injection table is collected
-> once at host startup, so a page refresh alone will not apply the RTL layer.
+> **Restart DSH after installing.** Plugin loading itself is decided at host
+> startup (the peer gate); the injection table is collected on every index
+> render, so a page refresh re-collects it once the host is up.
+
+> **Compatibility: no upper ceiling.** The plugin is accepted on any DSH at
+> `0.2.0` or newer; a newer runtime is not refused, because most releases leave
+> these integration points untouched. Only a runtime older than `0.2.0` is
+> refused. The peer gate warns — it does not refuse — when the runtime is newer
+> than the last one recorded in `data/tested-runtimes.json`.
 
 Then, to use the Arabic interface: **Settings → General → Language → العربية**.
 The RTL layer is active for every language as soon as the plugin loads.

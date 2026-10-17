@@ -3,6 +3,25 @@
 Every release below is published to npm through trusted publishing (OIDC) with a
 provenance attestation, and every one carries the suite results it was cut from.
 
+## 0.4.5 — 2026-10-17
+
+Any newer DSH is accepted; only a runtime older than the floor is refused.
+
+- **the peer range has no upper ceiling.** `peerDependencies` is now
+  `>=0.2.0-0 <0.2.1-0 || >=0.2.1-0`. Most DSH releases leave the integration
+  points this plugin touches untouched, and being silently excluded because the
+  runtime moved past an arbitrary ceiling is worse than running against a
+  version that was not exercised. Everything at or above `0.2.0-0` is accepted
+  (`0.2.1-rc.1`, `0.3.0`, `1.0.0`, `2.5.0`); everything below it is refused.
+- **`check-runtime-peer` is now a floor-and-warning gate.** It fails only when
+  the installed runtime is older than `0.2.0-0`; it succeeds with a warning when
+  the runtime is newer than the newest entry in `data/tested-runtimes.json`
+  (recorded: `0.2.0-rc.2`, `0.2.1-alpha.2`, `0.2.1-alpha.5`, `0.2.1-rc.1`); and
+  it passes silently inside that recorded range. npm's default prerelease rule
+  is reported as an install-time note, not a boot refusal, because the peer is
+  optional. The self-tests now assert the policy itself (`1.0.0` and `2.5.0`
+  accepted and warned about, `0.1.9` refused) as well as the comparator.
+
 ## 0.4.4 — 2026-10-17
 
 The host accepted the 0.2.1 prerelease line; npm still excluded it.
