@@ -1,13 +1,14 @@
 {
-  "_comment": "What the activity mirror was verified against in the shipped app. The web frontend renames every CSS module class, so these names are the contract between this plugin and DSH: scripts/check-shimmer-pins.mjs reads them out of an installed app.asar and fails, naming the difference, when a build changes them. Run it before a release (see docs/releasing.md) — it is not in CI, which has no DSH install.",
+  "_comment": "What the activity mirror was verified against in the shipped app. The web frontend renames every CSS module class, so these names are the contract between this plugin and DSH: scripts/check-shimmer-pins.mjs reads them out of the assets the frontend serves (dist/assets/index-*.css and index-*.js) inside an installed app.asar and fails, naming the difference, when a build changes them. From 0.2.1-rc.1 the primitives package is compiled into those assets and no longer ships as its own directory, so the module source is an optional probe whose absence is reported, not failed. Run it before a release (see docs/releasing.md) — it is not in CI, which has no DSH install.",
   "app": {
     "package": "@deepseek-ai/dsh-web-frontend",
-    "version": "0.2.0-rc.2",
-    "verified": "2026-10-05",
+    "version": "0.2.1-rc.1",
+    "verified": "2026-10-17",
     "archive": "app.asar"
   },
   "source": {
     "module": "@deepseek-ai/dsh-client-ui-primitives/lib/TextShimmer.module.css",
+    "note": "Optional probe: verified when an archive still ships the package separately (through 0.2.0-rc.2). 0.2.1-rc.1 merges TextShimmer into @deepseek-ai/dsh-web-frontend dist/assets, where the served-name checks are authoritative.",
     "layers": [".decoration", ".sweep", ".highlight"],
     "mask": "linear-gradient(105deg",
     "duration": "animation-duration: 1.5s",
