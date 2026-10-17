@@ -1,6 +1,6 @@
 {
   "name": "dsh-arabic",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "private": false,
   "description": "Arabic experience for DeepSeek Harness: bidi-safe RTL rendering for mixed Arabic/English content plus a full Arabic UI language pack registered through the official locale service.",
   "type": "module",
@@ -8,6 +8,7 @@
   "exports": {
     ".": "./index.js",
     "./client": "./lib/client.js",
+    "./locales/*": "./locales/*",
     "./package.json": "./package.json"
   },
   "files": [
@@ -29,6 +30,14 @@
       "platform": "web"
     }
   },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": ">=0.2.0-0 <1"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": {
+      "optional": true
+    }
+  },
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -48,7 +57,10 @@
     "status": "node scripts/status.mjs",
     "docs": "node scripts/check-docs.mjs",
     "family": "node scripts/check-bidi-family.mjs",
-    "check": "node scripts/build-client.mjs --check && node scripts/lint-consistency.mjs --strict && node scripts/check-docs.mjs && node scripts/check-bidi-family.mjs && npm test"
+    "bench": "node scripts/check-bench.mjs",
+    "browser": "node tests/browser-bidi.mjs",
+    "peer": "node scripts/check-runtime-peer.mjs",
+    "check": "node scripts/build-client.mjs --check && node scripts/lint-consistency.mjs --strict && node scripts/check-docs.mjs && node scripts/check-bidi-family.mjs && node scripts/check-runtime-peer.mjs && npm test"
   },
   "engines": {
     "node": ">=20"

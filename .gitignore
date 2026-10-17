@@ -5,6 +5,8 @@ agent-kit/
 AGENTS.md
 # local session handoff (a snapshot holding local paths); never published or committed
 HANDOFF.md
+# local planning/state home (.dsh/STATE.md, خطة-الإصلاح.md); never published or committed
+.dsh/
 
 # --- tooling / build output ---
 node_modules/

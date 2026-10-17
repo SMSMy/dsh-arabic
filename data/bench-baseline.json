@@ -1,0 +1,8 @@
+{
+  "comment": "The direction layer's cost, measured with `node tests/verify-rtl.mjs --bench 1000` and asserted by `node scripts/check-bench.mjs`. `styleReads` is the metric that matters: a style read is a reflow, and the count is deterministic in the test shim. `wallMs` is recorded for context only and is never asserted — it moves with the machine, and a gate that fails on noise gets switched off. Raising `styleReads` is a deliberate decision, made here, with the measurement in the commit message.",
+  "blocks": 1000,
+  "styleReads": 1034,
+  "wallMs": 46.9,
+  "recordedAt": "2026-10-16",
+  "recordedOn": "v0.4.2 working tree (node v25.9.0, Windows)"
+}

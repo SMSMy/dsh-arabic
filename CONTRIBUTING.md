@@ -60,6 +60,11 @@ they fall back to English — so a partial update never breaks the interface.
 - `tests/verify-rtl.mjs` runs that script against a small DOM shim and asserts
   the marking rules, including disable/restore.
 - Add a case to the shim whenever you touch marking, direction or the toggle.
+- `tests/browser-bidi.mjs` renders the same decisions in headless Chromium and
+  reads the glyph order back out of the layout, because the shim cannot prove
+  what a bidi engine does. It skips (exit 0) when no browser is installed, and
+  `data/bench-baseline.json` is the cost record `npm run bench` defends — raising
+  it in the same change, with the measurement, is the whole review.
 
 ## Checks before a pull request
 
@@ -68,6 +73,9 @@ npm test                                   # 67 bidi + 32 locale + 45 golden + 2
 node scripts/build-client.mjs --check      # catalog completeness + placeholders
 node scripts/lint-consistency.mjs --strict # same English translated two ways
 node scripts/check-bidi-family.mjs         # live-status isolation stays a recorded decision
+node scripts/lint-consistency.mjs --write-pins  # sign off every value carrying {count}
+npm run bench                              # direction-layer cost vs data/bench-baseline.json
+npm run browser                            # the same decisions laid out by Chromium (skips without one)
 node scripts/assemble-translations.mjs --from translations
 ```
 

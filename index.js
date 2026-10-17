@@ -104,14 +104,18 @@ function listFaces() {
     for (const [weightName, weight] of FONT_WEIGHTS) {
       const file = family.folder + '-' + weightName + '.woff2'
       const at = join(FONT_ROOT, family.folder, file)
-      let size = 0
+      // The bytes are read once, here, and kept: the route then serves from
+      // memory. A font is immutable for the life of the process (the URL is
+      // versioned per release), so a per-request disk read bought nothing but a
+      // blocked event loop on a server that also serves the app.
+      let bytes = null
       try {
-        size = readFileSync(at).length
+        bytes = readFileSync(at)
       } catch (err) {
         continue
       }
-      if (!size) continue
-      faces.push({ family, file, weight, weightName, at, url: FONT_URL + '/' + family.folder + '/' + file })
+      if (!bytes || !bytes.length) continue
+      faces.push({ family, file, weight, weightName, at, bytes, url: FONT_URL + '/' + family.folder + '/' + file })
     }
   }
   return faces
@@ -119,13 +123,13 @@ function listFaces() {
 
 const FONT_FACES = listFaces()
 /** Served pathname → the one file it may read. This map is the whole whitelist. */
-const FONT_FILES = new Map(FONT_FACES.map((face) => [new URL(face.url, 'http://x').pathname, face.at]))
+const FONT_FILES = new Map(FONT_FACES.map((face) => [new URL(face.url, 'http://x').pathname, face.bytes]))
 
 /**
  * Serve one font file from the whitelist above. Nothing is parsed out of the
  * request, so no request can reach a file that is not a declared face; a method
  * that is not GET/HEAD, an unknown path and a vanished file are all answered
- * without throwing into the server.
+ * without throwing into the server. The body is the buffer cached at import.
  */
 function serveFont(req, res) {
   try {
@@ -135,13 +139,12 @@ function serveFont(req, res) {
       return
     }
     const pathname = new URL(String(req.url || '/'), 'http://x').pathname
-    const file = FONT_FILES.get(pathname)
-    if (!file) {
+    const body = FONT_FILES.get(pathname)
+    if (!body) {
       res.writeHead(404)
       res.end()
       return
     }
-    const body = readFileSync(file)
     res.writeHead(200, {
       'content-type': 'font/woff2',
       'content-length': body.length,
@@ -300,6 +303,13 @@ html:lang(ar) :is(.highlight, [class*="_highlight_"]),
 function dshArabicClient() {
   var MARK = 'data-dsh-arabic-bidi'
   var INPUT_MARK = 'data-dsh-arabic-input'
+  /**
+   * What this layer last wrote into `dir`, per element. Releasing a block must
+   * take back only the direction we wrote: if the app wrote its own value
+   * afterwards, that value is not ours to remove, and two places used to remove
+   * `dir="rtl"` on sight alone.
+   */
+  var DIR_OWNED = typeof WeakMap === 'function' ? new WeakMap() : null
   var STYLE_ID = 'dsh-arabic-style'
   var STORE_KEY = 'dsh-arabic:rtl'
   var INSTALL_FLAG = '__dshArabicInstalled'
@@ -348,7 +358,6 @@ function dshArabicClient() {
         continue
       }
       if (!quoted && SEPARATOR.test(ch)) {
-        SEPARATOR.lastIndex = 0
         if (current) {
           out.push(current)
           current = ''
@@ -357,7 +366,6 @@ function dshArabicClient() {
       }
       current += ch
     }
-    SEPARATOR.lastIndex = 0
     if (current) out.push(current)
     return out
   }
@@ -575,7 +583,7 @@ function dshArabicClient() {
      */
     var passCache = null
 
-    function beginPass() { passCache = { display: new Map(), interactive: new Map() } }
+    function beginPass() { passCache = { display: new Map(), interactive: new Map(), skip: new Map() } }
     function endPass() { passCache = null }
 
     function computedDisplay(el) {
@@ -610,6 +618,23 @@ function dshArabicClient() {
     }
 
     /**
+     * Is this element inside a subtree the layer never judges (code, pre, media)?
+     * The same ancestors are asked for every text node in a pass, and each ask
+     * walks the tree up, so the answer is memoised for the pass like the other
+     * two reads.
+     */
+    function insideSkip(el) {
+      if (passCache) {
+        var hit = passCache.skip.get(el)
+        if (hit !== undefined) return hit
+      }
+      var value = false
+      try { value = !!(el.closest && el.closest(SKIP_SELECTOR)) } catch (err) { value = false }
+      if (passCache) passCache.skip.set(el, value)
+      return value
+    }
+
+    /**
      * A block's text and whether it carries Arabic, in one walk. The previous shape
      * walked every subtree twice — once to weigh it, once to ask whether it held
      * Arabic at all.
@@ -621,7 +646,7 @@ function dshArabicClient() {
       var node
       while ((node = walker.nextNode())) {
         var parent = node.parentElement
-        if (parent && parent.closest && parent.closest(SKIP_SELECTOR)) continue
+        if (parent && insideSkip(parent)) continue
         var value = node.nodeValue || ''
         if (!hasRtl && RTL_CHAR.test(value)) hasRtl = true
         out += value
@@ -751,6 +776,18 @@ function dshArabicClient() {
       }
     }
 
+    /**
+     * Take back the `dir` this layer wrote — and only that. The value must still
+     * be the one we set: an app that wrote its own direction afterwards keeps it,
+     * which the earlier sight-only removal could not tell apart.
+     */
+    function releaseDir(el) {
+      if (el.getAttribute('dir') !== 'rtl') return
+      if (DIR_OWNED && DIR_OWNED.get(el) !== 'rtl') return
+      el.removeAttribute('dir')
+      if (DIR_OWNED) DIR_OWNED.delete(el)
+    }
+
     function reconcile(el, info) {
       if (!enabled || !el || el.nodeType !== 1) return
       var ours = el.getAttribute(MARK) === '1'
@@ -762,7 +799,7 @@ function dshArabicClient() {
         // toggle). A `dir` the app set is untouched, as always.
         if (ours) {
           el.removeAttribute(MARK)
-          if (el.getAttribute('dir') === 'rtl') el.removeAttribute('dir')
+          releaseDir(el)
         }
         return
       }
@@ -780,10 +817,13 @@ function dshArabicClient() {
         el.setAttribute(MARK, '1')
         // `auto` stays where it is: our `direction`/`unicode-bidi` win over the
         // hint, so the app's own value is intact the moment the mark is withdrawn.
-        if (dir !== 'auto') el.setAttribute('dir', 'rtl')
+        if (dir !== 'auto') {
+          el.setAttribute('dir', 'rtl')
+          if (DIR_OWNED) DIR_OWNED.set(el, 'rtl')
+        }
       } else if (!want && ours) {
         el.removeAttribute(MARK)
-        if (el.getAttribute('dir') === 'rtl') el.removeAttribute('dir')
+        releaseDir(el)
       }
     }
 
@@ -801,7 +841,7 @@ function dshArabicClient() {
       while ((node = walker.nextNode())) {
         if (!RTL_CHAR.test(node.nodeValue || '')) continue
         var parent = node.parentElement
-        if (!parent || (parent.closest && parent.closest(SKIP_SELECTOR))) continue
+        if (!parent || insideSkip(parent)) continue
         var block = blockOf(parent)
         if (!block || seen.has(block)) continue
         seen.add(block)
@@ -809,19 +849,52 @@ function dshArabicClient() {
       }
     }
 
-    /** Composer, search boxes and any editable surface follow what is typed. */
-    function syncInput(el) {
-      if (!enabled || !el || !el.getAttribute) return
+    /**
+     * An input event can arrive for every keystroke of a composer holding tens of
+     * thousands of characters, and the decision is a linear scan of that text. Two
+     * guards bound the cost without changing the decision: an unchanged value needs
+     * no second look, and a long value is re-weighed at most every LONG_INPUT_MS —
+     * the trailing call always lands, so the direction still matches what is on
+     * screen when the typing stops.
+     */
+    var LONG_INPUT = 8192
+    var LONG_INPUT_MS = 120
+    var inputSeen = typeof WeakMap === 'function' ? new WeakMap() : null
+    var inputTimers = typeof WeakMap === 'function' ? new WeakMap() : null
+
+    /** The decision itself; syncInput decides when to run it. */
+    function decideInput(el) {
       var ours = el.getAttribute(INPUT_MARK) === '1'
       if (el.getAttribute('dir') && !ours) return
       var value = el.isContentEditable ? el.textContent : el.value
       var text = String(value == null ? '' : value)
+      if (inputSeen) inputSeen.set(el, text)
       // Hysteresis, like the block path: a composer that is already RTL keeps its
       // direction until the text is clearly Latin, otherwise typing mixed content
       // makes it flicker on every keystroke.
       var want = isRtlDominant(text, el.getAttribute('dir') === 'rtl') ? 'rtl' : 'auto'
-      if (el.getAttribute('dir') !== want) el.setAttribute('dir', want)
+      if (el.getAttribute('dir') !== want) {
+        el.setAttribute('dir', want)
+        if (DIR_OWNED) DIR_OWNED.set(el, want)
+      }
       if (!ours) el.setAttribute(INPUT_MARK, '1')
+    }
+
+    /** Composer, search boxes and any editable surface follow what is typed. */
+    function syncInput(el) {
+      if (!enabled || !el || !el.getAttribute) return
+      var value = el.isContentEditable ? el.textContent : el.value
+      var text = String(value == null ? '' : value)
+      if (inputSeen && inputSeen.get(el) === text) return
+      if (text.length > LONG_INPUT && inputTimers) {
+        if (inputTimers.get(el)) return
+        inputTimers.set(el, setTimeout(function () {
+          inputTimers.delete(el)
+          if (enabled) decideInput(el)
+        }, LONG_INPUT_MS))
+        return
+      }
+      decideInput(el)
     }
 
     /** Text-like inputs only: a checkbox, radio, file or hidden input has no
@@ -851,7 +924,7 @@ function dshArabicClient() {
           marked[i].removeAttribute(MARK)
           // Only a dir we wrote is ours to remove: a composer line keeps the app's
           // own auto, which is what its behaviour returns to when the layer goes off.
-          if (marked[i].getAttribute('dir') === 'rtl') marked[i].removeAttribute('dir')
+          releaseDir(marked[i])
         } catch (err) {}
       }
       var inputs = []
@@ -859,7 +932,12 @@ function dshArabicClient() {
       for (var j = 0; j < inputs.length; j++) {
         try {
           var dir = inputs[j].getAttribute('dir')
-          if (dir === 'rtl' || dir === 'auto') inputs[j].removeAttribute('dir')
+          // `rtl` and `auto` are the two shapes this layer writes into an editable;
+          // the value must still be the one we wrote before it is removed.
+          if ((dir === 'rtl' || dir === 'auto') && (!DIR_OWNED || DIR_OWNED.get(inputs[j]) === dir)) {
+            inputs[j].removeAttribute('dir')
+            if (DIR_OWNED) DIR_OWNED.delete(inputs[j])
+          }
           inputs[j].removeAttribute(INPUT_MARK)
         } catch (err) {}
       }
@@ -868,13 +946,25 @@ function dshArabicClient() {
     var queue = []
     var forced = []
     var timer = null
+    /**
+     * Set when either cap below is reached. The caps exist so one burst of DOM
+     * churn cannot hold the main thread; silently dropping the node was the other
+     * half of that trade and the wrong one — the dropped node was never looked at
+     * again, so its block could keep the wrong direction until some later mutation
+     * happened to touch it. A full pass the next time the queue drains costs one
+     * scan and can miss nothing.
+     */
+    var fullRescan = false
 
     function schedule(node, force) {
       if (!enabled || !node) return
       if (force) {
         if (forced.length < 200 && forced.indexOf(node) === -1) forced.push(node)
+        else if (forced.length >= 200) fullRescan = true
       } else if (queue.length < 500 && queue.indexOf(node) === -1) {
         queue.push(node)
+      } else if (queue.length >= 500) {
+        fullRescan = true
       }
       if (timer !== null) return
       timer = setTimeout(flush, 60)
@@ -912,6 +1002,13 @@ function dshArabicClient() {
         }
         for (i = 0; i < items.length; i++) {
           try { scan(items[i]) } catch (err) {}
+        }
+        // A cap was reached inside this window: one whole-document pass makes the
+        // dropped node impossible to observe. It runs inside the same pass cache,
+        // so the style reads it repeats are already paid for.
+        if (fullRescan) {
+          fullRescan = false
+          try { scan(document.body) } catch (err) {}
         }
       } finally {
         endPass()
@@ -954,6 +1051,10 @@ function dshArabicClient() {
     function setEnabled(next) {
       enabled = !!next
       try { window.localStorage.setItem(STORE_KEY, enabled ? 'on' : 'off') } catch (err) {}
+      // Every editable is decided again from scratch: the memo belongs to the state
+      // being left behind, and the disabled layer removed the marks it was keyed on.
+      if (inputSeen) inputSeen = new WeakMap()
+      if (inputTimers) inputTimers = new WeakMap()
       if (enabled) {
         beginPass()
         try { scan(document.body) } catch (err) {} finally { endPass() }
@@ -962,6 +1063,7 @@ function dshArabicClient() {
       } else {
         queue.length = 0
         forced.length = 0
+        fullRescan = false
         unmarkAll()
       }
       try {
@@ -990,7 +1092,13 @@ function dshArabicClient() {
 /** The injected stylesheet: the font layer first, then the direction layer. */
 const CSS = FONT_CSS + DIRECTION_CSS
 
-const CLIENT_TEXT = 'window.__dshArabicCss=' + JSON.stringify(CSS) + ';(' + dshArabicClient.toString() + ')();'
+/**
+ * The injected script: the stylesheet, the layer itself, and the version this
+ * build came from. The version is there so a page console can answer "which copy
+ * is actually running" — during the font work that question was guesswork.
+ */
+const CLIENT_TEXT = 'window.__dshArabicCss=' + JSON.stringify(CSS) + ';(' + dshArabicClient.toString() + ')();' +
+  'try{window.__dshArabic.version=' + JSON.stringify(VERSION) + '}catch(err){}'
 
 export default {
   name: 'dsh-arabic',
@@ -1031,4 +1139,4 @@ export default {
   }
 }
 
-export { CSS, MARK, STYLE_MARK, FONT_ROUTE, FONT_FACES, FONT_FAMILIES, serveFont }
+export { CSS, CLIENT_TEXT, MARK, STYLE_MARK, FONT_ROUTE, FONT_FACES, FONT_FAMILIES, serveFont }

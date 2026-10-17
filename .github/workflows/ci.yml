@@ -53,5 +53,14 @@ jobs:
       - name: Golden direction matrix
         run: node tests/golden-direction.mjs
 
+      # The shim suite decides; this one lays the same decisions out in a real
+      # bidi engine and reads the glyph order back. It skips (exit 0) when the
+      # runner has no Chrome, so the gate never fails for want of a browser.
+      - name: Direction decisions as a browser lays them out
+        run: node tests/browser-bidi.mjs
+
+      - name: Direction-layer cost against the recorded baseline
+        run: node scripts/check-bench.mjs
+
       - name: Coverage against the recorded upstream revision
         run: node scripts/status.mjs

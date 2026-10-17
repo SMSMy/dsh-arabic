@@ -9,7 +9,7 @@
  *   --strict  exit 1 on any reported finding (used by CI once the pack is clean)
  */
 
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -118,6 +118,63 @@ if (smells.length) {
   console.log('no smell findings')
 }
 
-const findings = conflicts.length + smells.length + whitespace.length
+/* ------------------------------------------------------- number-sensitive --- */
+
+/**
+ * DSH's locale dictionaries are flat `key → string`, so a sentence that counts
+ * things cannot select the Arabic form the count asks for (1, 2, 3–10, 11+) —
+ * the largest known linguistic debt, written up in docs/roadmap.md layer 3. The
+ * mitigation is to phrase around the number, and that is a review decision taken
+ * one value at a time; this check is what keeps it from being forgotten.
+ *
+ * Every value carrying `{count}` is pinned in data/plural-pins.json. A new one
+ * fails the gate until somebody reads it and pins it, and a pin whose string
+ * changed or disappeared fails too, so the register cannot drift away from the
+ * pack:
+ *
+ *   node scripts/lint-consistency.mjs --write-pins   # (re)generate, keeping notes
+ */
+const pluralPinsPath = join(ROOT, 'data', 'plural-pins.json')
+const countValues = []
+for (const [ns, dict] of Object.entries(arabic)) {
+  for (const [key, value] of Object.entries(dict)) {
+    if (typeof value === 'string' && value.includes('{count}')) countValues.push({ id: `${ns}#${key}`, value })
+  }
+}
+const pluralPinsFile = existsSync(pluralPinsPath) ? JSON.parse(readFileSync(pluralPinsPath, 'utf8')) : null
+const pluralPins = (pluralPinsFile && pluralPinsFile.pins) || {}
+const plural = []
+/** What a freshly generated entry says: mechanically pinned, not yet read value by value. */
+const PIN_DEFAULT = 'count-neutral phrasing · per-surface review pending'
+
+if (process.argv.includes('--write-pins')) {
+  const next = {}
+  for (const { id } of countValues) next[id] = pluralPins[id] || PIN_DEFAULT
+  const body = {
+    comment: 'Values carrying {count}. A flat dictionary cannot select an Arabic form by count, so each string ' +
+      'here is a deliberate allowance: the sentence was phrased to read correctly for 1, 2, 3-10 and 11+. The ' +
+      'default note records a mechanical pin, not a per-value reading — that review is tracked per surface in ' +
+      'docs/roadmap.md layer 3. Regenerate with `node scripts/lint-consistency.mjs --write-pins` and read the diff.',
+    pins: next
+  }
+  writeFileSync(pluralPinsPath, JSON.stringify(body, null, 2) + '\n')
+  console.log(`plural pins written: ${Object.keys(next).length} value(s) -> data/plural-pins.json`)
+} else {
+  for (const { id, value } of countValues) {
+    if (!Object.hasOwn(pluralPins, id)) plural.push(`unpinned count string: ${id} = ${JSON.stringify(value)}`)
+  }
+  for (const id of Object.keys(pluralPins)) {
+    if (!countValues.some((c) => c.id === id)) plural.push(`stale plural pin: ${id}`)
+  }
+  if (plural.length) {
+    console.log(`\n${plural.length} plural-pin finding(s):`)
+    for (const p of plural.slice(0, 20)) console.log('  ' + p)
+    if (plural.length > 20) console.log(`  ... and ${plural.length - 20} more`)
+  } else {
+    console.log(`\nall ${countValues.length} literal value(s) carrying {count} are pinned`)
+  }
+}
+
+const findings = conflicts.length + smells.length + whitespace.length + plural.length
 console.log(`\n${findings} finding(s)`)
 process.exit(strict && findings ? 1 : 0)
